@@ -46,7 +46,8 @@ async fn rocket() -> _ {
         "/",
         routes![
             routes::index::index,
-            routes::index::dev,
+            routes::dev::dev,
+            routes::dev::update_server,
             routes::auth::auth_login,
             routes::auth::auth_register,
             routes::roms::rom_upload,
