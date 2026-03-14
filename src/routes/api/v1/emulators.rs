@@ -18,19 +18,8 @@ use crate::{
     utils::s3::upload_object,
 };
 
-#[derive(FromForm)]
-pub struct EmulatorUpload<'r> {
-    pub name: String,
-    pub console: String,
-    pub platform: String,
-    pub run_command: String,
-    pub binary_file: TempFile<'r>,
-    pub config_files: Vec<String>,
-    pub zipped: bool,
-}
-
 #[derive(Serialize, sqlx::FromRow)]
-pub struct Emulator {
+pub struct V1EmulatorResponse {
     pub id: i32,
     pub name: String,
     pub console: String,
@@ -43,16 +32,16 @@ pub struct Emulator {
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-impl V1ApiResponseTrait for Vec<Emulator> {}
+impl V1ApiResponseTrait for Vec<V1EmulatorResponse> {}
 
 #[get("/api/v1/emulators/<console>/<platform>")]
 pub async fn get_emulators_for_platform(
     console: String,
     platform: String,
     _user: AuthenticatedUser,
-) -> V1ApiResponseType<Vec<Emulator>> {
+) -> V1ApiResponseType<Vec<V1EmulatorResponse>> {
     let emulators = sqlx::query_as!(
-        Emulator,
+        V1EmulatorResponse,
         r#"
         SELECT
             id,
@@ -85,13 +74,24 @@ pub async fn get_emulators_for_platform(
     Ok(V1ApiResponse(emulators))
 }
 
+#[derive(FromForm)]
+pub struct V1EmulatorUploadRequest<'r> {
+    pub name: String,
+    pub console: String,
+    pub platform: String,
+    pub run_command: String,
+    pub binary_file: TempFile<'r>,
+    pub config_files: Vec<String>,
+    pub zipped: bool,
+}
+
 #[post(
     "/api/v1/emulators/upload",
     format = "multipart/form-data",
     data = "<data>"
 )]
 pub async fn emulator_upload(
-    data: Form<EmulatorUpload<'_>>,
+    data: Form<V1EmulatorUploadRequest<'_>>,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<i32> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {

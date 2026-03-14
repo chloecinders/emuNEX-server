@@ -77,7 +77,7 @@
                     expires: Date.now() + 86400000,
                 });
 
-                window.location.href = `emunex://login?token=${json.data.token}&domain={{ domain | safe }}`
+                window.location.href = `emunex://login?token=${json.data.token}&domain={{ domain | safe }}&storage_path=/storage`
             } catch (err) {
                 showError(`${authType} error: ${err.message}`);
             }

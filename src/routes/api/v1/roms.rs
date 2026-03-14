@@ -18,17 +18,6 @@ use crate::{
     utils::s3::upload_object,
 };
 
-#[derive(FromForm)]
-pub struct RomUpload<'r> {
-    title: String,
-    console: String,
-    category: String,
-    region: Option<String>,
-    release_year: Option<i32>,
-    rom_file: TempFile<'r>,
-    image_file: TempFile<'r>,
-}
-
 #[derive(serde::Serialize, sqlx::FromRow)]
 pub struct V1RomListResponse {
     pub id: i32,
@@ -37,43 +26,6 @@ pub struct V1RomListResponse {
     pub console: String,
 }
 impl V1ApiResponseTrait for Vec<V1RomListResponse> {}
-
-#[derive(Serialize, sqlx::FromRow)]
-pub struct V1RomFullResponse {
-    pub id: i32,
-    pub title: String,
-    pub console: String,
-    pub region: Option<String>,
-    pub category: String,
-    pub rom_path: String,
-    pub image_path: String,
-    pub file_extension: Option<String>,
-    pub file_size_bytes: Option<i64>,
-    pub md5_hash: Option<String>,
-    pub release_year: Option<i32>,
-    pub is_favorite: Option<bool>,
-    pub play_count: Option<i32>,
-    pub last_played: Option<chrono::DateTime<chrono::Utc>>,
-    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
-}
-impl V1ApiResponseTrait for V1RomFullResponse {}
-
-#[derive(Serialize, sqlx::FromRow)]
-pub struct V1CategoryResponse {
-    pub name: String,
-}
-impl V1ApiResponseTrait for Vec<V1CategoryResponse> {}
-
-#[derive(Serialize, sqlx::FromRow)]
-pub struct V1UserLibraryResponse {
-    pub id: i32,
-    pub title: String,
-    pub image_path: String,
-    pub console: String,
-    pub play_count: i32,
-    pub last_played: Option<chrono::DateTime<chrono::Utc>>,
-}
-impl V1ApiResponseTrait for Vec<V1UserLibraryResponse> {}
 
 #[get("/api/v1/roms/list?<category>&<console>&<offset>&<limit>")]
 pub async fn get_rom_list(
@@ -107,6 +59,26 @@ pub async fn get_rom_list(
 
     Ok(V1ApiResponse(roms))
 }
+
+#[derive(Serialize, sqlx::FromRow)]
+pub struct V1RomFullResponse {
+    pub id: i32,
+    pub title: String,
+    pub console: String,
+    pub region: Option<String>,
+    pub category: String,
+    pub rom_path: String,
+    pub image_path: String,
+    pub file_extension: Option<String>,
+    pub file_size_bytes: Option<i64>,
+    pub md5_hash: Option<String>,
+    pub release_year: Option<i32>,
+    pub is_favorite: Option<bool>,
+    pub play_count: Option<i32>,
+    pub last_played: Option<chrono::DateTime<chrono::Utc>>,
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+impl V1ApiResponseTrait for V1RomFullResponse {}
 
 #[get("/api/v1/roms/<id>")]
 pub async fn get_rom_single(
@@ -156,9 +128,20 @@ pub async fn search_roms(
     Ok(V1ApiResponse(results))
 }
 
+#[derive(FromForm)]
+pub struct V1RomUpload<'r> {
+    title: String,
+    console: String,
+    category: String,
+    region: Option<String>,
+    release_year: Option<i32>,
+    rom_file: TempFile<'r>,
+    image_file: TempFile<'r>,
+}
+
 #[post("/api/v1/roms/upload", format = "multipart/form-data", data = "<data>")]
 pub async fn upload_rom(
-    data: Form<RomUpload<'_>>,
+    data: Form<V1RomUpload<'_>>,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<i32> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
@@ -239,6 +222,12 @@ pub async fn upload_rom(
     Ok(V1ApiResponse(rec.id))
 }
 
+#[derive(Serialize, sqlx::FromRow)]
+pub struct V1CategoryResponse {
+    pub name: String,
+}
+impl V1ApiResponseTrait for Vec<V1CategoryResponse> {}
+
 #[get("/api/v1/roms/categories")]
 pub async fn get_categories(
     _user: AuthenticatedUser,
@@ -278,6 +267,17 @@ pub async fn start_game(id: i32, user: AuthenticatedUser) -> V1ApiResponseType<(
 
     Ok(V1ApiResponse(()))
 }
+
+#[derive(Serialize, sqlx::FromRow)]
+pub struct V1UserLibraryResponse {
+    pub id: i32,
+    pub title: String,
+    pub image_path: String,
+    pub console: String,
+    pub play_count: i32,
+    pub last_played: Option<chrono::DateTime<chrono::Utc>>,
+}
+impl V1ApiResponseTrait for Vec<V1UserLibraryResponse> {}
 
 #[get("/api/v1/library")]
 pub async fn get_user_library(

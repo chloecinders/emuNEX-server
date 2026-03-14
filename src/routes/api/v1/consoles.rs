@@ -20,12 +20,6 @@ pub struct V1ConsoleResponse {
 }
 impl V1ApiResponseTrait for Vec<V1ConsoleResponse> {}
 
-#[derive(serde::Deserialize, FromForm)]
-pub struct ConsoleInsert {
-    pub name: String,
-    pub card_color: Option<String>,
-}
-
 #[get("/api/v1/roms/consoles")]
 pub async fn get_consoles(_user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1ConsoleResponse>> {
     let consoles = sqlx::query_as!(
@@ -42,9 +36,15 @@ pub async fn get_consoles(_user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1C
     Ok(V1ApiResponse(consoles))
 }
 
+#[derive(serde::Deserialize, FromForm)]
+pub struct V1ConsoleInsert {
+    pub name: String,
+    pub card_color: Option<String>,
+}
+
 #[post("/api/v1/roms/consoles", data = "<data>")]
 pub async fn upload_console(
-    data: Form<ConsoleInsert>,
+    data: Form<V1ConsoleInsert>,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<i32> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {

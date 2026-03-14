@@ -16,10 +16,20 @@ use crate::{
     },
 };
 
-#[derive(Deserialize)]
-pub struct V1AuthLoginRequest {
-    pub username: String,
-    pub password: String,
+#[derive(Serialize)]
+pub struct V1ClientStartResponse {
+    login_url: String,
+    storage_path: String,
+}
+
+impl V1ApiResponseTrait for V1ClientStartResponse {}
+
+#[get("/api/v1/start")]
+pub async fn client_start() -> V1ApiResponseType<V1ClientStartResponse> {
+    return Ok(V1ApiResponse(V1ClientStartResponse {
+        login_url: "/auth/login".into(),
+        storage_path: "/storage".into(),
+    }));
 }
 
 #[derive(Deserialize)]
@@ -34,31 +44,6 @@ pub struct V1AuthResponse {
 }
 
 impl V1ApiResponseTrait for V1AuthResponse {}
-
-#[derive(Serialize)]
-pub struct V1ClientStartResponse {
-    login_url: String,
-    storage_path: String,
-}
-
-impl V1ApiResponseTrait for V1ClientStartResponse {}
-
-#[derive(Serialize)]
-pub struct V1AuthMeResponse {
-    id: i32,
-    username: String,
-    role: UserRole,
-}
-
-impl V1ApiResponseTrait for V1AuthMeResponse {}
-
-#[get("/api/v1/start")]
-pub async fn client_start() -> V1ApiResponseType<V1ClientStartResponse> {
-    return Ok(V1ApiResponse(V1ClientStartResponse {
-        login_url: "/auth/login".into(),
-        storage_path: "/storage".into(),
-    }));
-}
 
 #[post("/api/v1/register", format = "json", data = "<request_data>")]
 pub async fn register(
@@ -103,6 +88,12 @@ pub async fn register(
     Ok(V1ApiResponse(V1AuthResponse { token }))
 }
 
+#[derive(Deserialize)]
+pub struct V1AuthLoginRequest {
+    pub username: String,
+    pub password: String,
+}
+
 #[post("/api/v1/login", format = "json", data = "<request_data>")]
 pub async fn login(request_data: Json<V1AuthLoginRequest>) -> V1ApiResponseType<V1AuthResponse> {
     let data = request_data.into_inner();
@@ -135,6 +126,15 @@ pub async fn login(request_data: Json<V1AuthLoginRequest>) -> V1ApiResponseType<
 
     Ok(V1ApiResponse(V1AuthResponse { token }))
 }
+
+#[derive(Serialize)]
+pub struct V1AuthMeResponse {
+    id: i32,
+    username: String,
+    role: UserRole,
+}
+
+impl V1ApiResponseTrait for V1AuthMeResponse {}
 
 #[get("/api/v1/users/@me")]
 pub async fn me(user: AuthenticatedUser) -> V1ApiResponseType<V1AuthMeResponse> {

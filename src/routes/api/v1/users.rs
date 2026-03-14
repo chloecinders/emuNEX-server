@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[derive(serde::Deserialize)]
-pub struct UpdateUserRequest {
+pub struct V1UpdateUserRequest {
     pub username: String,
     pub role: String,
 }
@@ -17,7 +17,7 @@ pub struct UpdateUserRequest {
 #[put("/api/v1/users/<id>", format = "json", data = "<data>")]
 pub async fn update_user(
     id: i32,
-    data: Json<UpdateUserRequest>,
+    data: Json<V1UpdateUserRequest>,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<i32> {
     if user.role != UserRole::Admin {

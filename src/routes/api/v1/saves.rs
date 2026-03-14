@@ -15,7 +15,7 @@ use crate::{
 };
 
 #[derive(serde::Deserialize)]
-pub struct JsonMultiFileSave {
+pub struct V1SaveUploadRequest {
     pub files: HashMap<String, String>,
 }
 
@@ -23,7 +23,7 @@ pub struct JsonMultiFileSave {
 pub async fn upload_save(
     id: i32,
     version_id: i32,
-    data: Json<JsonMultiFileSave>,
+    data: Json<V1SaveUploadRequest>,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<()> {
     for (file_name, b64_content) in data.files.iter() {
@@ -105,18 +105,18 @@ pub async fn download_save_file(
 }
 
 #[derive(Serialize)]
-pub struct SaveFileMetadata {
+pub struct V1SaveFileMetadataResponse {
     pub file_name: String,
     pub version_id: i32,
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
 }
-impl V1ApiResponseTrait for Vec<SaveFileMetadata> {}
+impl V1ApiResponseTrait for Vec<V1SaveFileMetadataResponse> {}
 
 #[get("/api/v1/roms/<id>/save/latest")]
 pub async fn get_latest_save(
     id: i32,
     user: AuthenticatedUser,
-) -> V1ApiResponseType<Vec<SaveFileMetadata>> {
+) -> V1ApiResponseType<Vec<V1SaveFileMetadataResponse>> {
     let latest_version = sqlx::query!(
         "SELECT version_id FROM user_save_files
          WHERE user_id = $1 AND rom_id = $2
@@ -136,7 +136,7 @@ pub async fn get_latest_save(
     .ok_or(V1ApiError::NotFound)?;
 
     let files = sqlx::query_as!(
-        SaveFileMetadata,
+        V1SaveFileMetadataResponse,
         "SELECT file_name, version_id, created_at FROM user_save_files
          WHERE user_id = $1 AND rom_id = $2 AND version_id = $3",
         user.id,
