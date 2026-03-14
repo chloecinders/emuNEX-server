@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            id,\n            name,\n            console,\n            platform,\n            run_command,\n            binary_path,\n            md5_hash,\n            config_files as \"config_files!\",\n            zipped as \"zipped!\",\n            created_at\n        FROM emulators\n        WHERE console = $1 AND platform = $2\n        ORDER BY name ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "console",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "platform",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "run_command",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "binary_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "md5_hash",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "config_files!",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 8,
+        "name": "zipped!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "5d1b84aa745941bf6823c43625ce8c4755e22962e1e14bb7c8cd93a71bfd10f2"
+}

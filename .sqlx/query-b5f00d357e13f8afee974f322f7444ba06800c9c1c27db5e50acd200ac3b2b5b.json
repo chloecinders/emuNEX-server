@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO consoles (name, card_color)\n         VALUES ($1, $2)\n         ON CONFLICT (name) DO UPDATE SET\n            card_color = EXCLUDED.card_color\n         RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b5f00d357e13f8afee974f322f7444ba06800c9c1c27db5e50acd200ac3b2b5b"
+}

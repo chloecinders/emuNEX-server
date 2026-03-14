@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_roms (user_id, rom_id, play_count, last_played)\n         VALUES ($1, $2, 1, NOW())\n         ON CONFLICT (user_id, rom_id)\n         DO UPDATE SET\n            play_count = user_roms.play_count + 1,\n            last_played = EXCLUDED.last_played",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "69bba293825aaf28e196c43a4f4ff717b44a92bfae2cefb16a516b53193b4863"
+}

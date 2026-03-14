@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.id, r.title, r.image_path, r.console, ur.play_count, ur.last_played\n         FROM roms r\n         INNER JOIN user_roms ur ON r.id = ur.rom_id\n         WHERE ur.user_id = $1\n         ORDER BY ur.last_played DESC NULLS LAST",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "image_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "console",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "play_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_played",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "061025083007c0169f22528325a0fd3f5af119fbe225493dd92cdb89eeb046d3"
+}
