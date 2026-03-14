@@ -1,2 +1,5 @@
-database_url = "postgres://username:password@host:port/database"
-seaweedfs_url = "https://host:port"
+server_domain = "http://localhost:8000"
+database_url = "postgres://user:password@host:port/database"
+seaweedfs_url = "http://localhost:8888"
+repository = "chloecinders/emunex-server"
+github_token = ""

@@ -77,7 +77,7 @@
                     expires: Date.now() + 86400000,
                 });
 
-                window.location.href = `emulatorthing://login?token=${json.data.token}&domain=http://127.0.0.1:8000`
+                window.location.href = `emunex://login?token=${json.data.token}&domain={{ domain | safe }}`
             } catch (err) {
                 showError(`${authType} error: ${err.message}`);
             }
