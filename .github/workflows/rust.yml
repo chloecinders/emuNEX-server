@@ -35,10 +35,11 @@ jobs:
             - name: Build
               run: cargo build --release --verbose
 
-            - name: Upload binary
+            - name: Upload build artifacts
               uses: actions/upload-artifact@v4
               with:
-                  name: emunex-server-${{ matrix.os }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+                  name: emunex-build-${{ matrix.os }}
                   path: |
-                      target/**/release/emunex-server
-                      target/**/release/emunex-server.exe
+                      target/release/emunex-server
+                      target/release/emunex-server.exe
+                      templates/
