@@ -13,6 +13,7 @@ pub enum V1ApiError {
     NotFound,
     InternalError,
     Conflict,
+    BadRequest,
 }
 
 impl V1ApiError {
@@ -29,6 +30,10 @@ impl V1ApiError {
             V1ApiError::Conflict => (
                 Status::Conflict,
                 "The request could not be completed due to a conflict with the current state of the resource.",
+            ),
+            V1ApiError::BadRequest => (
+                Status::BadRequest,
+                "The request was invalid or contained malformed data",
             ),
         }
     }

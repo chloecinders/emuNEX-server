@@ -16,13 +16,13 @@ pub fn dev(user: AuthenticatedUser) -> Result<Template, Status> {
     Ok(Template::render("dev", context! {}))
 }
 
-use std::fs;
+use std::{fs, io::Cursor, process, time::Duration};
 #[cfg(not(target_os = "windows"))]
-use std::os::unix::fs::PermissionsExt;
+use std::{fs::Permissions, os::unix::fs::PermissionsExt};
 
 #[post("/admin/update")]
 pub async fn update_server(user: AuthenticatedUser) -> Result<Status, String> {
-    if (user.role != UserRole::Admin) {
+    if user.role != UserRole::Admin {
         return Err("Not Authorized".into());
     }
 
@@ -81,7 +81,7 @@ pub async fn update_server(user: AuthenticatedUser) -> Result<Status, String> {
             .map_err(|e| e.to_string())?;
 
         let extracted_bytes = tokio::task::spawn_blocking(move || {
-            let reader = std::io::Cursor::new(bytes);
+            let reader = Cursor::new(bytes);
             let mut zip = zip::ZipArchive::new(reader).unwrap();
             let mut file = zip.by_name("release/emunex-server").unwrap();
             let mut buffer = Vec::new();
@@ -101,13 +101,12 @@ pub async fn update_server(user: AuthenticatedUser) -> Result<Status, String> {
         fs::remove_file(target).ok();
         fs::copy(temp_bin, target).map_err(|e| e.to_string())?;
         #[cfg(not(target_os = "windows"))]
-        fs::set_permissions(target, fs::Permissions::from_mode(0o755))
-            .map_err(|e| e.to_string())?;
+        fs::set_permissions(target, Permissions::from_mode(0o755)).map_err(|e| e.to_string())?;
         fs::remove_file(temp_bin).ok();
 
         tokio::spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_millis(250)).await;
-            std::process::exit(0);
+            tokio::time::sleep(Duration::from_millis(250)).await;
+            process::exit(0);
         });
     }
 
@@ -121,7 +120,6 @@ pub struct WorkflowRunsResponse {
 
 #[derive(Debug, Deserialize)]
 pub struct WorkflowRun {
-    pub id: u64,
     pub status: String,
     pub conclusion: Option<String>,
     pub artifacts_url: String,
