@@ -83,7 +83,7 @@ pub async fn update_server(user: AuthenticatedUser) -> Result<Status, String> {
         let extracted_bytes = tokio::task::spawn_blocking(move || {
             let reader = Cursor::new(bytes);
             let mut zip = zip::ZipArchive::new(reader).unwrap();
-            let mut file = zip.by_name("release/emunex-server").unwrap();
+            let mut file = zip.by_name("target/release/emunex-server").unwrap();
             let mut buffer = Vec::new();
             std::io::copy(&mut file, &mut buffer).unwrap();
             buffer
