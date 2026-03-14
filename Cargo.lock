@@ -538,6 +538,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "emunex-server"
+version = "0.1.0"
+dependencies = [
+ "argon2",
+ "chrono",
+ "reqwest",
+ "rocket",
+ "rocket_dyn_templates",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "toml 1.0.6+spec-1.1.0",
+ "uuid",
+]
+
+[[package]]
 name = "encoding_rs"
 version = "0.8.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2643,23 +2660,6 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
-]
-
-[[package]]
-name = "server"
-version = "0.1.0"
-dependencies = [
- "argon2",
- "chrono",
- "reqwest",
- "rocket",
- "rocket_dyn_templates",
- "serde",
- "serde_json",
- "sqlx",
- "tokio",
- "toml 1.0.6+spec-1.1.0",
- "uuid",
 ]
 
 [[package]]
