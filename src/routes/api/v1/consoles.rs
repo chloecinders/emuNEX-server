@@ -47,7 +47,7 @@ pub async fn upload_console(
     data: Form<ConsoleInsert>,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<i32> {
-    if user.role != UserRole::Admin {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
         return Err(V1ApiError::NotAuthorized);
     }
 

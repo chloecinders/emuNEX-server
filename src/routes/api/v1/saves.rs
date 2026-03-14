@@ -3,13 +3,15 @@ use std::{collections::HashMap, path::PathBuf};
 use base64::{Engine as _, engine::general_purpose};
 use rocket::{get, post, serde::json::Json};
 use serde::Serialize;
+use tracing::error;
 
 use crate::{
-    CONFIG, SQL,
+    SQL,
     routes::api::{
         V1ApiError, V1ApiResponse, V1ApiResponseType, api_response::V1ApiResponseTrait,
         v1::guards::AuthenticatedUser,
     },
+    utils::s3::{download_object, upload_object},
 };
 
 #[derive(serde::Deserialize)]
@@ -24,21 +26,21 @@ pub async fn upload_save(
     data: Json<JsonMultiFileSave>,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<()> {
-    let client = reqwest::Client::new();
-
     for (file_name, b64_content) in data.files.iter() {
-        let buffer = general_purpose::STANDARD
-            .decode(b64_content)
-            .map_err(|_| V1ApiError::BadRequest)?;
+        let buffer = general_purpose::STANDARD.decode(b64_content).map_err(|e| {
+            error!("Failed to decode base64 for file '{}': {:?}", file_name, e);
+            V1ApiError::BadRequest
+        })?;
 
         let save_path = format!("/saves/{}/{}/{}/{}", user.id, id, version_id, file_name);
 
-        client
-            .put(format!("{}{}", CONFIG.seaweedfs_url, save_path))
-            .body(buffer)
-            .send()
-            .await
-            .map_err(|_| V1ApiError::InternalError)?;
+        upload_object(&save_path, &buffer).await.map_err(|e| {
+            error!(
+                "Failed to upload save file '{}' to '{}': {:?}",
+                file_name, save_path, e
+            );
+            V1ApiError::InternalError
+        })?;
 
         sqlx::query!(
             "INSERT INTO user_save_files (user_id, rom_id, version_id, file_name, save_path)
@@ -51,7 +53,13 @@ pub async fn upload_save(
         )
         .execute(&*SQL)
         .await
-        .map_err(|_| V1ApiError::InternalError)?;
+        .map_err(|e| {
+            error!(
+                "Database error inserting save file '{}': {:?}",
+                file_name, e
+            );
+            V1ApiError::InternalError
+        })?;
     }
 
     Ok(V1ApiResponse(()))
@@ -76,18 +84,24 @@ pub async fn download_save_file(
     )
     .fetch_optional(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?
+    .map_err(|e| {
+        error!(
+            "Database error fetching save file for id {}, version {}: {:?}",
+            id, version_id, e
+        );
+        V1ApiError::InternalError
+    })?
     .ok_or(V1ApiError::NotFound)?;
 
-    let client = reqwest::Client::new();
-    let resp = client
-        .get(format!("{}{}", CONFIG.seaweedfs_url, record.save_path))
-        .send()
-        .await
-        .map_err(|_| V1ApiError::InternalError)?;
+    let bytes = download_object(&record.save_path).await.map_err(|e| {
+        error!(
+            "Failed to download save file from '{}': {:?}",
+            record.save_path, e
+        );
+        V1ApiError::InternalError
+    })?;
 
-    let bytes = resp.bytes().await.map_err(|_| V1ApiError::InternalError)?;
-    Ok(bytes.to_vec())
+    Ok(bytes)
 }
 
 #[derive(Serialize)]
@@ -112,7 +126,13 @@ pub async fn get_latest_save(
     )
     .fetch_optional(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?
+    .map_err(|e| {
+        error!(
+            "Database error fetching latest version for rom {}: {:?}",
+            id, e
+        );
+        V1ApiError::InternalError
+    })?
     .ok_or(V1ApiError::NotFound)?;
 
     let files = sqlx::query_as!(
@@ -125,7 +145,13 @@ pub async fn get_latest_save(
     )
     .fetch_all(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?;
+    .map_err(|e| {
+        error!(
+            "Database error fetching save metadata for rom {}, version {}: {:?}",
+            id, latest_version.version_id, e
+        );
+        V1ApiError::InternalError
+    })?;
 
     Ok(V1ApiResponse(files))
 }

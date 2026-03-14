@@ -1,10 +1,6 @@
-use rocket::futures::StreamExt;
 use rocket::http::{Header, Status};
 use rocket::response::Responder;
-use rocket::response::stream::ByteStream;
 use rocket::{Request, Response, get, options, response};
-
-use crate::CONFIG;
 
 #[options("/storage/<_file..>")]
 pub async fn storage_options<'r>(_file: std::path::PathBuf) -> CorsResponse {
@@ -12,20 +8,12 @@ pub async fn storage_options<'r>(_file: std::path::PathBuf) -> CorsResponse {
 }
 
 #[get("/storage/<file..>")]
-pub async fn storage(file: std::path::PathBuf) -> ByteStream![Vec<u8>] {
-    let url = format!("{}/{}", CONFIG.seaweedfs_url, file.display());
+pub async fn storage(file: std::path::PathBuf) -> Result<Vec<u8>, Status> {
+    let key = format!("/{}", file.display());
 
-    ByteStream! {
-        let res = reqwest::get(url).await;
-
-        if let Ok(response) = res {
-            let mut stream = response.bytes_stream();
-
-            while let Some(Ok(chunk)) = stream.next().await {
-                yield chunk.to_vec();
-            }
-        }
-    }
+    crate::utils::s3::download_object(&key)
+        .await
+        .map_err(|_| Status::NotFound)
 }
 
 pub struct CorsResponse;

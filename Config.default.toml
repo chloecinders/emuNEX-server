@@ -1,5 +1,11 @@
 server_domain = "http://localhost:8000"
 database_url = "postgres://user:password@host:port/database"
-seaweedfs_url = "http://localhost:8888"
 repository = "chloecinders/emunex-server"
 github_token = ""
+
+[s3]
+endpoint = "http://localhost:8333"
+bucket = "emunex"
+access_key = ""
+secret_key = ""
+region = ""

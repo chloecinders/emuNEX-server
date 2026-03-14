@@ -6,14 +6,16 @@ use rocket::{
     get, post,
 };
 use serde::Serialize;
+use tracing::error;
 
 use crate::{
-    CONFIG, SQL,
+    SQL,
     routes::api::{
         V1ApiError, V1ApiResponse, V1ApiResponseType,
         api_response::V1ApiResponseTrait,
         v1::guards::{AuthenticatedUser, UserRole},
     },
+    utils::s3::upload_object,
 };
 
 #[derive(FromForm)]
@@ -73,7 +75,10 @@ pub async fn get_emulators_for_platform(
     .fetch_all(&*SQL)
     .await
     .map_err(|e| {
-        eprintln!("Database error: {:?}", e);
+        error!(
+            "Database error fetching emulators for console '{}', platform '{}': {:?}",
+            console, platform, e
+        );
         V1ApiError::InternalError
     })?;
 
@@ -89,11 +94,9 @@ pub async fn emulator_upload(
     data: Form<EmulatorUpload<'_>>,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<i32> {
-    if user.role != UserRole::Admin {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
         return Err(V1ApiError::NotAuthorized);
     }
-
-    let client = reqwest::Client::new();
 
     let bin_filename = data
         .binary_file
@@ -116,14 +119,18 @@ pub async fn emulator_upload(
 
     let bin_bytes = tokio::fs::read(data.binary_file.path().unwrap())
         .await
-        .map_err(|_| V1ApiError::InternalError)?;
+        .map_err(|e| {
+            error!("Failed to read emulator binary from temp storage: {:?}", e);
+            V1ApiError::InternalError
+        })?;
 
-    client
-        .put(format!("{}{}", CONFIG.seaweedfs_url, binary_path))
-        .body(bin_bytes)
-        .send()
-        .await
-        .map_err(|_| V1ApiError::InternalError)?;
+    upload_object(&binary_path, &bin_bytes).await.map_err(|e| {
+        error!(
+            "Failed to upload emulator binary to '{}': {:?}",
+            binary_path, e
+        );
+        V1ApiError::InternalError
+    })?;
 
     let rec = sqlx::query!(
         "INSERT INTO emulators (name, console, platform, run_command, binary_path, config_files, zipped)
@@ -139,7 +146,7 @@ pub async fn emulator_upload(
     .fetch_one(&*SQL)
     .await
     .map_err(|e| {
-        eprintln!("Database error: {:?}", e);
+        error!("Database error inserting emulator '{}': {:?}", data.name, e);
         V1ApiError::InternalError
     })?;
 

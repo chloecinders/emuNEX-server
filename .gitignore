@@ -2,3 +2,4 @@ data
 target
 weed.exe
 Config.toml
+weed.config.json

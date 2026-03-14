@@ -6,14 +6,16 @@ use rocket::{
     get, post,
 };
 use serde::Serialize;
+use tracing::error;
 
 use crate::{
-    CONFIG, SQL,
+    SQL,
     routes::api::{
         V1ApiError, V1ApiResponse, V1ApiResponseType,
         api_response::V1ApiResponseTrait,
         v1::guards::{AuthenticatedUser, UserRole},
     },
+    utils::s3::upload_object,
 };
 
 #[derive(FromForm)]
@@ -98,7 +100,10 @@ pub async fn get_rom_list(
     )
     .fetch_all(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?;
+    .map_err(|e| {
+        error!("Failed to fetch rom list: {:?}", e);
+        V1ApiError::InternalError
+    })?;
 
     Ok(V1ApiResponse(roms))
 }
@@ -111,7 +116,10 @@ pub async fn get_rom_single(
     let rom = sqlx::query_as!(V1RomFullResponse, "SELECT * FROM roms WHERE id = $1", id)
         .fetch_optional(&*SQL)
         .await
-        .map_err(|_| V1ApiError::InternalError)?
+        .map_err(|e| {
+            error!("Failed to fetch rom id {}: {:?}", id, e);
+            V1ApiError::InternalError
+        })?
         .ok_or(V1ApiError::NotFound)?;
 
     Ok(V1ApiResponse(rom))
@@ -140,7 +148,10 @@ pub async fn search_roms(
     )
     .fetch_all(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?;
+    .map_err(|e| {
+        error!("Failed to search roms with query '{}': {:?}", query, e);
+        V1ApiError::InternalError
+    })?;
 
     Ok(V1ApiResponse(results))
 }
@@ -150,11 +161,9 @@ pub async fn upload_rom(
     data: Form<RomUpload<'_>>,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<i32> {
-    if user.role != UserRole::Admin {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
         return Err(V1ApiError::NotAuthorized);
     }
-
-    let client = reqwest::Client::new();
 
     let sanitize = |s: &str| {
         s.replace(" ", "_")
@@ -193,25 +202,27 @@ pub async fn upload_rom(
 
     let rom_bytes = tokio::fs::read(data.rom_file.path().unwrap())
         .await
-        .map_err(|_| V1ApiError::InternalError)?;
+        .map_err(|e| {
+            error!("Failed to read rom file from temp storage: {:?}", e);
+            V1ApiError::InternalError
+        })?;
 
-    client
-        .put(format!("{}{}", CONFIG.seaweedfs_url, rom_path))
-        .body(rom_bytes)
-        .send()
-        .await
-        .map_err(|_| V1ApiError::InternalError)?;
+    upload_object(&rom_path, &rom_bytes).await.map_err(|e| {
+        error!("Failed to upload rom to '{}': {:?}", rom_path, e);
+        V1ApiError::InternalError
+    })?;
 
     let img_bytes = tokio::fs::read(data.image_file.path().unwrap())
         .await
-        .map_err(|_| V1ApiError::InternalError)?;
+        .map_err(|e| {
+            error!("Failed to read image file from temp storage: {:?}", e);
+            V1ApiError::InternalError
+        })?;
 
-    client
-        .put(format!("{}{}", CONFIG.seaweedfs_url, img_path))
-        .body(img_bytes)
-        .send()
-        .await
-        .map_err(|_| V1ApiError::InternalError)?;
+    upload_object(&img_path, &img_bytes).await.map_err(|e| {
+        error!("Failed to upload image to '{}': {:?}", img_path, e);
+        V1ApiError::InternalError
+    })?;
 
     let rec = sqlx::query!(
         "INSERT INTO roms (title, console, category, region, release_year, rom_path, image_path, file_extension)
@@ -220,7 +231,10 @@ pub async fn upload_rom(
     )
     .fetch_one(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?;
+    .map_err(|e| {
+        error!("Failed to insert rom into database: {:?}", e);
+        V1ApiError::InternalError
+    })?;
 
     Ok(V1ApiResponse(rec.id))
 }
@@ -235,7 +249,10 @@ pub async fn get_categories(
     )
     .fetch_all(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?;
+    .map_err(|e| {
+        error!("Failed to fetch categories: {:?}", e);
+        V1ApiError::InternalError
+    })?;
 
     Ok(V1ApiResponse(categories))
 }
@@ -254,7 +271,10 @@ pub async fn start_game(id: i32, user: AuthenticatedUser) -> V1ApiResponseType<(
     )
     .execute(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?;
+    .map_err(|e| {
+        error!("Failed to update user_roms for id {}: {:?}", id, e);
+        V1ApiError::InternalError
+    })?;
 
     Ok(V1ApiResponse(()))
 }
@@ -274,7 +294,10 @@ pub async fn get_user_library(
     )
     .fetch_all(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?;
+    .map_err(|e| {
+        error!("Failed to fetch user library: {:?}", e);
+        V1ApiError::InternalError
+    })?;
 
     Ok(V1ApiResponse(library))
 }

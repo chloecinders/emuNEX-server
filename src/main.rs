@@ -1,5 +1,6 @@
 use rocket::{launch, routes};
 use rocket_dyn_templates::Template;
+use s3::Bucket;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use tokio::{fs::File, io::AsyncReadExt};
 
@@ -10,9 +11,14 @@ mod utils;
 
 pub static CONFIG: AutoOnceLock<Config> = AutoOnceLock::new();
 pub static SQL: AutoOnceLock<PgPool> = AutoOnceLock::new();
+pub static S3: AutoOnceLock<Box<Bucket>> = AutoOnceLock::new();
 
 #[launch]
 async fn rocket() -> _ {
+    // tracing_subscriber::fmt()
+    //     .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+    //     .init();
+
     let mut config_file = File::open("./Config.toml")
         .await
         .expect("Could not find Config.toml in cwd");
@@ -37,6 +43,8 @@ async fn rocket() -> _ {
         .await
     })
     .unwrap();
+
+    S3.set(utils::s3::create_bucket()).unwrap();
 
     if let Err(err) = sqlx::migrate!().run(&*SQL).await {
         panic!("Could not run database migrations; err = {err}")
