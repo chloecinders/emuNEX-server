@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Add New Emulator</title>
+    </head>
+    <body>
+        <h1>Register Emulator</h1>
+
+        <form id="emulatorForm">
+            <div>
+                <label>Name:</label><br />
+                <input type="text" id="name" name="name" placeholder="VBA" required />
+            </div>
+
+            <div>
+                <label>Console:</label><br />
+                <input type="text" id="console" name="console" placeholder="GBA" required />
+            </div>
+
+            <div>
+                <label>Platform:</label><br />
+                <select id="platform" name="platform" required>
+                    <option value="linux">Linux</option>
+                    <option value="windows">Windows</option>
+                    <option value="darwin">macOS</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Run Command:</label><br />
+                <input type="text" id="run_command" name="run_command" placeholder="--game $rom" required />
+            </div>
+
+            <div>
+                <label>Config Files (comma separated):</label><br />
+                <input type="text" id="config_input" placeholder="snes9x.conf, settings.ini" />
+            </div>
+
+            <div style="margin-top: 10px">
+                <input type="checkbox" id="zipped" name="zipped" />
+                <label for="zipped">Is Zipped / Bundle</label>
+            </div>
+
+            <hr />
+
+            <div>
+                <label>Executable:</label><br />
+                <input type="file" id="binary_file" name="binary_file" required />
+            </div>
+
+            <div style="margin-top: 20px">
+                <button type="submit" id="submitBtn">Upload</button>
+            </div>
+        </form>
+
+        <p id="statusMessage"></p>
+
+        <script>
+            document.getElementById("emulatorForm").addEventListener("submit", async (e) => {
+                e.preventDefault();
+
+                const btn = document.getElementById("submitBtn");
+                const status = document.getElementById("statusMessage");
+
+                const formData = new FormData(e.target);
+
+                const configs = document
+                    .getElementById("config_input")
+                    .value.split(",")
+                    .map((s) => s.trim())
+                    .filter((s) => s !== "");
+
+                formData.delete("config_files");
+                configs.forEach((file) => formData.append("config_files", file));
+
+                const isZipped = document.getElementById("zipped").checked;
+                formData.set("zipped", isZipped);
+
+                const token = localStorage.getItem("token");
+
+                btn.disabled = true;
+                status.innerText = "Uploading binary and registering emulator...";
+                status.style.color = "black";
+
+                try {
+                    const response = await fetch("/api/v1/emulators/upload", {
+                        method: "POST",
+                        body: formData,
+                        headers: {
+                            Authorization: token,
+                        },
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        status.innerText = `Success! Emulator ID: ${result.data}`;
+                        status.style.color = "green";
+                        e.target.reset();
+                    } else {
+                        status.innerText = `Error: ${result.error || "Upload failed"}`;
+                        status.style.color = "red";
+                    }
+                } catch (err) {
+                    status.innerText = "Network error occurred.";
+                    status.style.color = "red";
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        </script>
+    </body>
+</html>

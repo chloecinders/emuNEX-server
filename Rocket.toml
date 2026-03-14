@@ -1,0 +1,4 @@
+[default.limits]
+form = "1 GB"
+data-form = "1 GB"
+file = "1 GB"

@@ -1,0 +1,2 @@
+database_url = "postgres://username:password@host:port/database"
+seaweedfs_url = "https://host:port"

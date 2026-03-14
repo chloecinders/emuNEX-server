@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Manage Consoles</title>
+    </head>
+    <body>
+        <h1>Add or Update Console</h1>
+
+        <form id="consoleForm">
+            <div>
+                <label>Name:</label><br />
+                <input type="text" id="name" name="name" placeholder="GBA" required />
+            </div>
+
+            <div>
+                <label>Card Color Hex:</label><br />
+                <input type="text" id="card_color" name="card_color" placeholder="#ff0000" />
+            </div>
+
+            <div style="margin-top: 20px">
+                <button type="submit" id="submitBtn">Save Console</button>
+            </div>
+        </form>
+
+        <p id="statusMessage"></p>
+
+        <script>
+            document.getElementById("consoleForm").addEventListener("submit", async (e) => {
+                e.preventDefault();
+
+                const btn = document.getElementById("submitBtn");
+                const status = document.getElementById("statusMessage");
+                const formData = new FormData(e.target);
+
+                const token = localStorage.getItem("token");
+
+                btn.disabled = true;
+                status.innerText = "Saving to database...";
+                status.style.color = "black";
+
+                try {
+                    const response = await fetch("/api/v1/roms/consoles", {
+                        method: "POST",
+                        body: formData,
+                        headers: {
+                            Authorization: token,
+                        },
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        status.innerText = `Success ID: ${result.data}`;
+                        status.style.color = "green";
+                        e.target.reset();
+                    } else {
+                        status.innerText = `Error: ${result.error || "Save failed"}`;
+                        status.style.color = "red";
+                    }
+                } catch (err) {
+                    status.innerText = "Network error occurred.";
+                    status.style.color = "red";
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        </script>
+    </body>
+</html>

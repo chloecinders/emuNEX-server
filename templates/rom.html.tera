@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Add New ROM</title>
+    </head>
+    <body>
+        <h1>Upload ROM to Collection</h1>
+
+        <form id="uploadForm">
+            <div>
+                <label>Title:</label><br />
+                <input type="text" id="title" name="title" required />
+            </div>
+
+            <div>
+                <label>Console:</label><br />
+                <input type="text" id="console" name="console" placeholder="GBA" required />
+            </div>
+
+            <div>
+                <label>Category:</label><br />
+                <input type="text" id="category" name="category" placeholder="Metroidvania" required />
+            </div>
+
+            <div>
+                <label>Region:</label><br />
+                <input type="text" id="region" name="region" placeholder="USA" />
+            </div>
+
+            <div>
+                <label>Year:</label><br />
+                <input type="number" id="release_year" name="release_year" />
+            </div>
+
+            <hr />
+
+            <div>
+                <label>ROM:</label><br />
+                <input type="file" id="rom_file" name="rom_file" required />
+            </div>
+
+            <div>
+                <label>Cover:</label><br />
+                <input type="file" id="image_file" name="image_file" required />
+            </div>
+
+            <div style="margin-top: 20px">
+                <button type="submit" id="submitBtn">Upload</button>
+            </div>
+        </form>
+
+        <p id="statusMessage"></p>
+
+        <script>
+            document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+                e.preventDefault();
+
+                const btn = document.getElementById("submitBtn");
+                const status = document.getElementById("statusMessage");
+                const formData = new FormData(e.target);
+
+                const token = localStorage.getItem("token");
+
+                btn.disabled = true;
+                status.innerText = "Uploading to SeaweedFS and updating Postgres...";
+                status.style.color = "black";
+
+                try {
+                    const response = await fetch("/api/v1/roms/upload", {
+                        method: "POST",
+                        body: formData,
+                        headers: {
+                            Authorization: token,
+                        },
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        status.innerText = `Success ID: ${result.data}`;
+                        status.style.color = "green";
+                        e.target.reset();
+                    } else {
+                        status.innerText = `Error: ${result.error || "Upload failed"}`;
+                        status.style.color = "red";
+                    }
+                } catch (err) {
+                    status.innerText = "Network error occurred.";
+                    status.style.color = "red";
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        </script>
+    </body>
+</html>

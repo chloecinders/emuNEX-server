@@ -1,0 +1,18 @@
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>dev</title>
+    </head>
+    <body>
+        <div>
+            <a href="/roms/upload">upload rom</a>
+        </div>
+        <div>
+            <a href="/emulators/upload">upload emulator</a>
+        </div>
+        <div>
+            <a href="/consoles/upload">upload console</a>
+        </div>
+    </body>
+</html>
