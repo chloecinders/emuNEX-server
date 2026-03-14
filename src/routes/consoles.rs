@@ -5,7 +5,7 @@ use crate::routes::api::v1::guards::{AuthenticatedUser, UserRole};
 
 #[get("/consoles/upload")]
 pub fn consoles_upload(user: AuthenticatedUser) -> Result<Template, Status> {
-    if user.role != UserRole::Admin {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
         return Err(Status::Unauthorized);
     }
 

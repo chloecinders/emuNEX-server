@@ -6,3 +6,4 @@ pub mod emulators;
 pub mod index;
 pub mod proxy;
 pub mod roms;
+pub mod users;

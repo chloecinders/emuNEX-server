@@ -1,13 +1,16 @@
+use serde::Serialize;
+
 use crate::{SQL, routes::api::V1ApiError};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, sqlx::Type, PartialEq)]
 #[sqlx(type_name = "user_role", rename_all = "lowercase")]
 pub enum UserRole {
     Admin,
+    Moderator,
     User,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct AuthenticatedUser {
     pub id: i32,
     pub username: String,

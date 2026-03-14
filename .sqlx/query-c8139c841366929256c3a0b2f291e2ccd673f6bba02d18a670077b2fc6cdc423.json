@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT version_id FROM user_save_files\n         WHERE user_id = $1 AND rom_id = $2\n         ORDER BY version_id DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "version_id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c8139c841366929256c3a0b2f291e2ccd673f6bba02d18a670077b2fc6cdc423"
+}

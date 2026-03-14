@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>User Management</title>
+    </head>
+    <body>
+        <h1>User Management</h1>
+
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr data-id="{{ user.id }}">
+                    <td>{{ user.id }}</td>
+                    <td>
+                        <input type="text" class="edit-username" value="{{ user.username }}" />
+                    </td>
+                    <td>
+                        <select class="edit-role">
+                            <option value="user" {% if user.role == "user" %}selected{% endif %}>user</option>
+                            <option value="moderator" {% if user.role == "moderator" %}selected{% endif %}>moderator</option>
+                            <option value="admin" {% if user.role == "admin" %}selected{% endif %}>admin</option>
+                        </select>
+                    </td>
+                    <td>
+                        <button onclick="saveUser({{ user.id }})">Save</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <p id="statusMessage"></p>
+
+        <script>
+            async function saveUser(userId) {
+                const row = document.querySelector(`tr[data-id="${userId}"]`);
+                const username = row.querySelector(".edit-username").value;
+                const role = row.querySelector(".edit-role").value;
+                const status = document.getElementById("statusMessage");
+                const token = localStorage.getItem("token");
+
+                try {
+                    const response = await fetch(`/api/v1/users/${userId}`, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": token
+                        },
+                        body: JSON.stringify({ username, role })
+                    });
+
+                    if (response.ok) {
+                        status.innerText = "User updated successfully";
+                        status.style.color = "green";
+                    } else {
+                        const result = await response.json();
+                        status.innerText = `Error: ${result.error}`;
+                        status.style.color = "red";
+                    }
+                } catch (err) {
+                    status.innerText = "Network error.";
+                    status.style.color = "red";
+                }
+            }
+        </script>
+    </body>
+</html>

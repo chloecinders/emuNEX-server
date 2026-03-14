@@ -9,11 +9,11 @@ use crate::{
 
 #[get("/dev")]
 pub fn dev(user: AuthenticatedUser) -> Result<Template, Status> {
-    if user.role != UserRole::Admin {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
         return Err(Status::Unauthorized);
     }
 
-    Ok(Template::render("dev", context! {}))
+    Ok(Template::render("dev", context! { role: user.role }))
 }
 
 use std::{fs, io::Cursor, process, time::Duration};

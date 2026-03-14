@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                    SELECT u.id, u.role as \"role: UserRole\", u.username\n                    FROM users u\n                    JOIN user_tokens ut ON u.id = ut.user_id\n                    WHERE ut.token = $1\n                    ",
+  "query": "SELECT id, username, role AS \"role: UserRole\", created_at FROM users ORDER BY id ASC",
   "describe": {
     "columns": [
       {
@@ -10,6 +10,11 @@
       },
       {
         "ordinal": 1,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
         "name": "role: UserRole",
         "type_info": {
           "Custom": {
@@ -25,21 +30,20 @@
         }
       },
       {
-        "ordinal": 2,
-        "name": "username",
-        "type_info": "Varchar"
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "b0bd3de184c87d896209bc9cf46139cd959b0982ebb7be7562c2f3eea1306e18"
+  "hash": "a02dba99d1b434a3c789ff56aa5b5b987f95b6900b8670268d2d538dc0c973b3"
 }

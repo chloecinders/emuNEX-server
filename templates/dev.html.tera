@@ -5,6 +5,7 @@
         <title>dev</title>
     </head>
     <body>
+        <div>your role is {{ role }}</div>
         <div>
             <a href="/roms/upload">upload rom</a>
         </div>
@@ -14,6 +15,8 @@
         <div>
             <a href="/consoles/upload">upload console</a>
         </div>
+        {% if role == "Admin" %}
+        <div><a href="/users">manage users</a></div>
         <hr />
         <div>
             <button id="updateBtn" onclick="triggerUpdate()">pull update and restart</button>
@@ -47,5 +50,6 @@
                 }
             }
         </script>
+        {% endif %}
     </body>
 </html>

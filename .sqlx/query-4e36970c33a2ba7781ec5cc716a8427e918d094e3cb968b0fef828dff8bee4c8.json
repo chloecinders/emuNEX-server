@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users\n         SET username = $1, role = $2::text::user_role, updated_at = CURRENT_TIMESTAMP\n         WHERE id = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4e36970c33a2ba7781ec5cc716a8427e918d094e3cb968b0fef828dff8bee4c8"
+}

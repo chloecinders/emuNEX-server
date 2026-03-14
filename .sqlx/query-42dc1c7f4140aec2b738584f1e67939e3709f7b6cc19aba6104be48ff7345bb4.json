@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT save_path FROM user_save_files\n         WHERE user_id = $1 AND rom_id = $2 AND version_id = $3 AND file_name = $4",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "save_path",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "42dc1c7f4140aec2b738584f1e67939e3709f7b6cc19aba6104be48ff7345bb4"
+}
