@@ -1,77 +1,160 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
     <head>
-        <title>Add New Emulator</title>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Register Emulator | emuNEX</title>
+        <link rel="stylesheet" href="/public/css/dev.css" />
     </head>
     <body>
-        <h1>Register Emulator</h1>
+        <div class="auth-container">
+            <div class="auth-card">
+                <header class="card-header">
+                    <a href="/dev" class="back-link">Back</a>
+                    <h1>emuNEX</h1>
+                    <p class="tagline">Emulator Engine Upload</p>
+                </header>
 
-        <form id="emulatorForm">
-            <div>
-                <label>Name:</label><br />
-                <input type="text" id="name" name="name" placeholder="VBA" required />
+                <div class="content">
+                    <form id="emulatorForm">
+                        <div class="section-hint">Emulator Details</div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md);">
+                            <div class="form-group">
+                                <label for="name">Name</label>
+                                <input type="text" id="name" name="name" placeholder="e.g. VBA-M" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="console">Console</label>
+                                <input type="text" id="console" name="console" placeholder="GBA" required />
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="platform">Platform</label>
+                            <select id="platform" name="platform" required>
+                                <option value="linux">Linux</option>
+                                <option value="windows">Windows</option>
+                                <option value="darwin">macOS</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="run_command">Run Command</label>
+                            <input type="text" id="run_command" name="run_command" placeholder="--game $rom" required />
+                        </div>
+
+                        <div class="form-group">
+                            <label>Config Files</label>
+                            <div id="configTags" class="tag-system">
+                                <div class="tag-input-wrapper">
+                                    <input type="text" id="tagInput" placeholder="Type filename and press Enter (e.g. snes9x.conf)" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: var(--spacing-sm); margin: var(--spacing-sm) 0;">
+                            <input type="checkbox" id="zipped" name="zipped" style="width: auto;" />
+                            <label for="zipped" style="margin-bottom: 0;">Is Zipped / Bundle</label>
+                        </div>
+
+                        <div class="section-hint">Files</div>
+
+                        <div class="form-group">
+                            <label>Executable / Archive</label>
+                            <label for="binary_file" class="upload-zone" id="dropZone">
+                                <div class="upload-icon">↑</div>
+                                <div class="upload-info">
+                                    <div class="upload-text">Upload emulator bundle</div>
+                                    <div id="fileName" class="file-name"></div>
+                                </div>
+                                <input type="file" id="binary_file" name="binary_file" required style="display: none;" />
+                            </label>
+                        </div>
+
+                        <button type="submit" class="nintendo-btn" id="uploadBtn">
+                            <span class="btn-edge"></span>
+                            <span class="btn-front" id="btnText">Upload Emulator</span>
+                        </button>
+                    </form>
+
+                    <div id="statusBox" class="status-box"></div>
+                </div>
             </div>
-
-            <div>
-                <label>Console:</label><br />
-                <input type="text" id="console" name="console" placeholder="GBA" required />
-            </div>
-
-            <div>
-                <label>Platform:</label><br />
-                <select id="platform" name="platform" required>
-                    <option value="linux">Linux</option>
-                    <option value="windows">Windows</option>
-                    <option value="darwin">macOS</option>
-                </select>
-            </div>
-
-            <div>
-                <label>Run Command:</label><br />
-                <input type="text" id="run_command" name="run_command" placeholder="--game $rom" required />
-            </div>
-
-            <div>
-                <label>Config Files (comma separated):</label><br />
-                <input type="text" id="config_input" placeholder="snes9x.conf, settings.ini" />
-            </div>
-
-            <div style="margin-top: 10px">
-                <input type="checkbox" id="zipped" name="zipped" />
-                <label for="zipped">Is Zipped / Bundle</label>
-            </div>
-
-            <hr />
-
-            <div>
-                <label>Executable:</label><br />
-                <input type="file" id="binary_file" name="binary_file" required />
-            </div>
-
-            <div style="margin-top: 20px">
-                <button type="submit" id="submitBtn">Upload</button>
-            </div>
-        </form>
-
-        <p id="statusMessage"></p>
+        </div>
 
         <script>
+            const tagInput = document.getElementById("tagInput");
+            const configTags = document.getElementById("configTags");
+            const tags = new Set();
+
+            function renderTags() {
+                const existingTags = configTags.querySelectorAll(".tag");
+                existingTags.forEach(t => t.remove());
+
+                tags.forEach(tag => {
+                    const tagEl = document.createElement("div");
+                    tagEl.className = "tag";
+                    tagEl.innerHTML = `${tag} <span class="tag-remove" onclick="removeTag('${tag}')">×</span>`;
+                    configTags.insertBefore(tagEl, tagInput.parentElement);
+                });
+            }
+
+            function removeTag(tag) {
+                tags.delete(tag);
+                renderTags();
+            }
+
+            tagInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" && tagInput.value.trim()) {
+                    e.preventDefault();
+                    tags.add(tagInput.value.trim());
+                    tagInput.value = "";
+                    renderTags();
+                }
+            });
+
+            const dropZone = document.getElementById("dropZone");
+            const fileInput = document.getElementById("binary_file");
+            const fileNameDisplay = document.getElementById("fileName");
+
+            fileInput.addEventListener("change", () => {
+                if (fileInput.files.length) {
+                    fileNameDisplay.textContent = fileInput.files[0].name;
+                }
+            });
+
+            ["dragenter", "dragover"].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add("dragover");
+                }, false);
+            });
+
+            ["dragleave", "drop"].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove("dragover");
+                }, false);
+            });
+
+            dropZone.addEventListener("drop", (e) => {
+                const dt = e.dataTransfer;
+                fileInput.files = dt.files;
+                if (fileInput.files.length) {
+                    fileNameDisplay.textContent = fileInput.files[0].name;
+                }
+            }, false);
+
             document.getElementById("emulatorForm").addEventListener("submit", async (e) => {
                 e.preventDefault();
 
                 const btn = document.getElementById("submitBtn");
-                const status = document.getElementById("statusMessage");
-
+                const statusBox = document.getElementById("statusBox");
                 const formData = new FormData(e.target);
 
-                const configs = document
-                    .getElementById("config_input")
-                    .value.split(",")
-                    .map((s) => s.trim())
-                    .filter((s) => s !== "");
-
                 formData.delete("config_files");
-                configs.forEach((file) => formData.append("config_files", file));
+                tags.forEach((file) => formData.append("config_files", file));
 
                 const isZipped = document.getElementById("zipped").checked;
                 formData.set("zipped", isZipped);
@@ -79,8 +162,9 @@
                 const token = localStorage.getItem("token");
 
                 btn.disabled = true;
-                status.innerText = "Uploading binary and registering emulator...";
-                status.style.color = "black";
+                statusBox.innerText = "Processing registration...";
+                statusBox.className = "status-box status-success";
+                statusBox.style.display = "block";
 
                 try {
                     const response = await fetch("/api/v1/emulators/upload", {
@@ -94,16 +178,19 @@
                     const result = await response.json();
 
                     if (response.ok) {
-                        status.innerText = `Success! Emulator ID: ${result.data}`;
-                        status.style.color = "green";
+                        statusBox.innerText = `Success! Emulator ID: ${result.data}`;
+                        statusBox.className = "status-box status-success";
                         e.target.reset();
+                        tags.clear();
+                        renderTags();
+                        fileNameDisplay.textContent = "";
                     } else {
-                        status.innerText = `Error: ${result.error || "Upload failed"}`;
-                        status.style.color = "red";
+                        statusBox.innerText = `Error: ${result.error || "Registration failed"}`;
+                        statusBox.className = "status-box status-error";
                     }
                 } catch (err) {
-                    status.innerText = "Network error occurred.";
-                    status.style.color = "red";
+                    statusBox.innerText = "A network error occurred.";
+                    statusBox.className = "status-box status-error";
                 } finally {
                     btn.disabled = false;
                 }

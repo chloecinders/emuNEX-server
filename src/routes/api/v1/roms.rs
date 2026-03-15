@@ -3,7 +3,8 @@ use std::path::Path;
 use rocket::{
     form::{Form, FromForm},
     fs::TempFile,
-    get, post,
+    get, post, put, delete,
+    serde::json::Json,
 };
 use serde::Serialize;
 use tracing::error;
@@ -220,6 +221,141 @@ pub async fn upload_rom(
     })?;
 
     Ok(V1ApiResponse(rec.id))
+}
+
+#[derive(serde::Deserialize)]
+pub struct V1RomUpdateRequest {
+    pub title: String,
+    pub console: String,
+    pub category: String,
+    pub region: Option<String>,
+    pub release_year: Option<i32>,
+}
+
+#[put("/api/v1/roms/<id>", format = "json", data = "<data>")]
+pub async fn update_rom(
+    id: i32,
+    data: Json<V1RomUpdateRequest>,
+    user: AuthenticatedUser,
+) -> V1ApiResponseType<i32> {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
+        return Err(V1ApiError::NotAuthorized);
+    }
+
+    sqlx::query!(
+        "UPDATE roms SET title = $1, console = $2, category = $3, region = $4, release_year = $5 WHERE id = $6",
+        data.title,
+        data.console,
+        data.category,
+        data.region,
+        data.release_year,
+        id
+    )
+    .execute(&*SQL)
+    .await
+    .map_err(|e| {
+        error!("Failed to update rom id {}: {:?}", id, e);
+        V1ApiError::InternalError
+    })?;
+
+    Ok(V1ApiResponse(id))
+}
+
+#[derive(FromForm)]
+pub struct V1FileUpdate<'r> {
+    file: TempFile<'r>,
+}
+
+#[post("/api/v1/roms/<id>/file", format = "multipart/form-data", data = "<data>")]
+pub async fn update_rom_file(
+    id: i32,
+    data: Form<V1FileUpdate<'_>>,
+    user: AuthenticatedUser,
+) -> V1ApiResponseType<()> {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
+        return Err(V1ApiError::NotAuthorized);
+    }
+
+    let rom = sqlx::query!("SELECT title, console, rom_path FROM roms WHERE id = $1", id)
+        .fetch_optional(&*SQL)
+        .await
+        .map_err(|e| { error!("{:?}", e); V1ApiError::InternalError })?
+        .ok_or(V1ApiError::NotFound)?;
+
+    let rom_bytes = tokio::fs::read(data.file.path().unwrap())
+        .await
+        .map_err(|e| { error!("{:?}", e); V1ApiError::InternalError })?;
+
+    // We reuse the existing path to avoid orphaned files, or we could delete the old one.
+    // Since upload_object overwrites, this is fine.
+    upload_object(&rom.rom_path, &rom_bytes).await.map_err(|e| {
+        error!("Failed to upload rom: {:?}", e);
+        V1ApiError::InternalError
+    })?;
+
+    Ok(V1ApiResponse(()))
+}
+
+#[derive(FromForm)]
+pub struct V1ImageUpdate<'r> {
+    image: TempFile<'r>,
+}
+
+#[post("/api/v1/roms/<id>/image", format = "multipart/form-data", data = "<data>")]
+pub async fn update_rom_image(
+    id: i32,
+    data: Form<V1ImageUpdate<'_>>,
+    user: AuthenticatedUser,
+) -> V1ApiResponseType<()> {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
+        return Err(V1ApiError::NotAuthorized);
+    }
+
+    let rom = sqlx::query!("SELECT image_path FROM roms WHERE id = $1", id)
+        .fetch_optional(&*SQL)
+        .await
+        .map_err(|e| { error!("{:?}", e); V1ApiError::InternalError })?
+        .ok_or(V1ApiError::NotFound)?;
+
+    let img_bytes = tokio::fs::read(data.image.path().unwrap())
+        .await
+        .map_err(|e| { error!("{:?}", e); V1ApiError::InternalError })?;
+
+    upload_object(&rom.image_path, &img_bytes).await.map_err(|e| {
+        error!("Failed to upload image: {:?}", e);
+        V1ApiError::InternalError
+    })?;
+
+    Ok(V1ApiResponse(()))
+}
+
+#[delete("/api/v1/roms/<id>")]
+pub async fn delete_rom(id: i32, user: AuthenticatedUser) -> V1ApiResponseType<()> {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
+        return Err(V1ApiError::NotAuthorized);
+    }
+
+    let rom = sqlx::query!("SELECT rom_path, image_path FROM roms WHERE id = $1", id)
+        .fetch_optional(&*SQL)
+        .await
+        .map_err(|e| {
+            error!("Failed to fetch rom for deletion: {:?}", e);
+            V1ApiError::InternalError
+        })?
+        .ok_or(V1ApiError::NotFound)?;
+
+    let _ = crate::utils::s3::delete_object(&rom.rom_path).await;
+    let _ = crate::utils::s3::delete_object(&rom.image_path).await;
+
+    sqlx::query!("DELETE FROM roms WHERE id = $1", id)
+        .execute(&*SQL)
+        .await
+        .map_err(|e| {
+            error!("Failed to delete rom id {}: {:?}", id, e);
+            V1ApiError::InternalError
+        })?;
+
+    Ok(V1ApiResponse(()))
 }
 
 #[derive(Serialize, sqlx::FromRow)]

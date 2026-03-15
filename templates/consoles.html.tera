@@ -1,45 +1,108 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
     <head>
-        <title>Manage Consoles</title>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Manage Consoles | emuNEX</title>
+        <link rel="stylesheet" href="/public/css/dev.css" />
     </head>
     <body>
-        <h1>Add or Update Console</h1>
+        <div class="auth-container">
+            <div class="auth-card">
+                <header class="card-header">
+                    <a href="/dev" class="back-link">Back</a>
+                    <h1>emuNEX</h1>
+                    <p class="tagline">Add or Update Console</p>
+                </header>
 
-        <form id="consoleForm">
-            <div>
-                <label>Name:</label><br />
-                <input type="text" id="name" name="name" placeholder="GBA" required />
+                <div class="content">
+                    <form id="consoleForm">
+                        <div class="section-hint">Console Library</div>
+
+                        <div class="form-group">
+                            <label for="name">Console Name</label>
+                            <input type="text" id="name" name="name" placeholder="GBA" required />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="card_color">Card Color Hex</label>
+                            <div style="display: flex; gap: var(--spacing-sm); align-items: center">
+                                <input
+                                    type="text"
+                                    id="card_color"
+                                    name="card_color"
+                                    placeholder="#ff0000"
+                                    style="flex: 1; font-family: monospace; text-transform: uppercase"
+                                    oninput="syncColorFromHex(this.value)"
+                                />
+                                <input
+                                    type="color"
+                                    id="hiddenColorPicker"
+                                    style="display: none"
+                                    oninput="syncColorFromPicker(this.value)"
+                                />
+                                <div
+                                    id="colorPreview"
+                                    onclick="document.getElementById('hiddenColorPicker').click()"
+                                    style="
+                                        width: 42px;
+                                        height: 42px;
+                                        border-radius: var(--radius-sm);
+                                        border: 2px solid var(--color-border);
+                                        background: #eee;
+                                        cursor: pointer;
+                                        flex-shrink: 0;
+                                        transition: transform 0.1s;
+                                    "
+                                    onmousedown="this.style.transform = 'scale(0.95)'"
+                                    onmouseup="this.style.transform = 'scale(1)'"
+                                    onmouseleave="this.style.transform = 'scale(1)'"
+                                ></div>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="submitBtn" class="nintendo-btn" style="margin-top: var(--spacing-lg)">
+                            <span class="btn-edge"></span>
+                            <span class="btn-front">Save Console</span>
+                        </button>
+                    </form>
+
+                    <div id="statusBox" class="status-box"></div>
+                </div>
             </div>
-
-            <div>
-                <label>Card Color Hex:</label><br />
-                <input type="text" id="card_color" name="card_color" placeholder="#ff0000" />
-            </div>
-
-            <div style="margin-top: 20px">
-                <button type="submit" id="submitBtn">Save Console</button>
-            </div>
-        </form>
-
-        <p id="statusMessage"></p>
+        </div>
 
         <script>
+            function syncColorFromHex(hex) {
+                const preview = document.getElementById("colorPreview");
+                const picker = document.getElementById("hiddenColorPicker");
+                if (/^#[0-9A-F]{6}$/i.test(hex)) {
+                    preview.style.backgroundColor = hex;
+                    picker.value = hex;
+                }
+            }
+
+            function syncColorFromPicker(hex) {
+                document.getElementById("card_color").value = hex.toUpperCase();
+                document.getElementById("colorPreview").style.backgroundColor = hex;
+            }
+
             document.getElementById("consoleForm").addEventListener("submit", async (e) => {
                 e.preventDefault();
 
                 const btn = document.getElementById("submitBtn");
-                const status = document.getElementById("statusMessage");
+                const statusBox = document.getElementById("statusBox");
                 const formData = new FormData(e.target);
 
                 const token = localStorage.getItem("token");
 
                 btn.disabled = true;
-                status.innerText = "Saving to database...";
-                status.style.color = "black";
+                statusBox.innerText = "Saving console...";
+                statusBox.className = "status-box status-success";
+                statusBox.style.display = "block";
 
                 try {
-                    const response = await fetch("/api/v1/roms/consoles", {
+                    const response = await fetch("/api/v1/consoles", {
                         method: "POST",
                         body: formData,
                         headers: {
@@ -50,16 +113,17 @@
                     const result = await response.json();
 
                     if (response.ok) {
-                        status.innerText = `Success ID: ${result.data}`;
-                        status.style.color = "green";
+                        statusBox.innerText = `Success! Console ID: ${result.data}`;
+                        statusBox.className = "status-box status-success";
                         e.target.reset();
+                        document.getElementById("colorPreview").style.backgroundColor = "#eee";
                     } else {
-                        status.innerText = `Error: ${result.error || "Save failed"}`;
-                        status.style.color = "red";
+                        statusBox.innerText = `Error: ${result.error || "Save failed"}`;
+                        statusBox.className = "status-box status-error";
                     }
                 } catch (err) {
-                    status.innerText = "Network error occurred.";
-                    status.style.color = "red";
+                    statusBox.innerText = "A network error occurred.";
+                    statusBox.className = "status-box status-error";
                 } finally {
                     btn.disabled = false;
                 }

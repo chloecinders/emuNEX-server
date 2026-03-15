@@ -1,4 +1,4 @@
-use rocket::{launch, routes};
+use rocket::{fs::FileServer, launch, routes};
 use rocket_dyn_templates::Template;
 use s3::Bucket;
 use sqlx::{PgPool, postgres::PgPoolOptions};
@@ -15,10 +15,6 @@ pub static S3: AutoOnceLock<Box<Bucket>> = AutoOnceLock::new();
 
 #[launch]
 async fn rocket() -> _ {
-    // tracing_subscriber::fmt()
-    //     .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-    //     .init();
-
     let mut config_file = File::open("./Config.toml")
         .await
         .expect("Could not find Config.toml in cwd");
@@ -50,39 +46,55 @@ async fn rocket() -> _ {
         panic!("Could not run database migrations; err = {err}")
     }
 
-    rocket::build().attach(Template::fairing()).mount(
-        "/",
-        routes![
-            routes::index::index,
-            routes::dev::dev,
-            routes::dev::update_server,
-            routes::auth::auth_login,
-            routes::auth::auth_register,
-            routes::roms::rom_upload,
-            routes::emulators::emulators_upload,
-            routes::consoles::consoles_upload,
-            routes::users::manage_users,
-            routes::api::v1::auth::login,
-            routes::api::v1::auth::register,
-            routes::api::v1::auth::client_start,
-            routes::api::v1::auth::me,
-            routes::api::v1::roms::get_rom_list,
-            routes::api::v1::roms::get_rom_single,
-            routes::api::v1::roms::search_roms,
-            routes::api::v1::roms::upload_rom,
-            routes::api::v1::roms::get_categories,
-            routes::api::v1::roms::start_game,
-            routes::api::v1::roms::get_user_library,
-            routes::api::v1::consoles::get_consoles,
-            routes::api::v1::consoles::upload_console,
-            routes::api::v1::emulators::get_emulators_for_platform,
-            routes::api::v1::emulators::emulator_upload,
-            routes::api::v1::saves::upload_save,
-            routes::api::v1::saves::get_latest_save,
-            routes::api::v1::saves::download_save_file,
-            routes::api::v1::users::update_user,
-            routes::proxy::storage,
-            routes::proxy::storage_options,
-        ],
-    )
+    rocket::build()
+        .attach(Template::fairing())
+        .mount("/public", FileServer::from("./public"))
+        .mount(
+            "/",
+            routes![
+                routes::index::index,
+                routes::dev::dev,
+                routes::dev::update_server,
+                routes::auth::auth_login,
+                routes::auth::auth_register,
+                routes::roms::rom_upload,
+                routes::roms::rom_manage,
+                routes::emulators::emulators_upload,
+                routes::emulators::emulators_manage,
+                routes::consoles::consoles_upload,
+                routes::consoles::consoles_manage,
+                routes::users::manage_users,
+                routes::api::v1::auth::login,
+                routes::api::v1::auth::register,
+                routes::api::v1::auth::client_start,
+                routes::api::v1::auth::me,
+                routes::api::v1::roms::get_rom_list,
+                routes::api::v1::roms::get_rom_single,
+                routes::api::v1::roms::search_roms,
+                routes::api::v1::roms::upload_rom,
+                routes::api::v1::roms::update_rom,
+                routes::api::v1::roms::update_rom_file,
+                routes::api::v1::roms::update_rom_image,
+                routes::api::v1::roms::delete_rom,
+                routes::api::v1::roms::get_categories,
+                routes::api::v1::roms::start_game,
+                routes::api::v1::roms::get_user_library,
+                routes::api::v1::consoles::get_consoles,
+                routes::api::v1::consoles::upload_console,
+                routes::api::v1::consoles::update_console_metadata,
+                routes::api::v1::consoles::delete_console,
+                routes::api::v1::emulators::get_emulators_for_platform,
+                routes::api::v1::emulators::emulator_upload,
+                routes::api::v1::emulators::get_all_emulators,
+                routes::api::v1::emulators::update_emulator,
+                routes::api::v1::emulators::update_emulator_binary,
+                routes::api::v1::emulators::delete_emulator,
+                routes::api::v1::saves::upload_save,
+                routes::api::v1::saves::get_latest_save,
+                routes::api::v1::saves::download_save_file,
+                routes::api::v1::users::update_user,
+                routes::proxy::storage,
+                routes::proxy::storage_options,
+            ],
+        )
 }

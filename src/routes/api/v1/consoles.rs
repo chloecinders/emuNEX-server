@@ -1,6 +1,8 @@
 use rocket::{
+    delete,
     form::{Form, FromForm},
-    get, post,
+    get, post, put,
+    serde::json::Json,
 };
 use serde::Serialize;
 
@@ -20,7 +22,7 @@ pub struct V1ConsoleResponse {
 }
 impl V1ApiResponseTrait for Vec<V1ConsoleResponse> {}
 
-#[get("/api/v1/roms/consoles")]
+#[get("/api/v1/consoles")]
 pub async fn get_consoles(_user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1ConsoleResponse>> {
     let consoles = sqlx::query_as!(
         V1ConsoleResponse,
@@ -42,7 +44,7 @@ pub struct V1ConsoleInsert {
     pub card_color: Option<String>,
 }
 
-#[post("/api/v1/roms/consoles", data = "<data>")]
+#[post("/api/v1/consoles", data = "<data>")]
 pub async fn upload_console(
     data: Form<V1ConsoleInsert>,
     user: AuthenticatedUser,
@@ -65,4 +67,48 @@ pub async fn upload_console(
     .map_err(|_| V1ApiError::InternalError)?;
 
     Ok(V1ApiResponse(rec.id))
+}
+
+#[derive(serde::Deserialize)]
+pub struct V1ConsoleUpdateRequest {
+    pub card_color: Option<String>,
+}
+
+#[put("/api/v1/consoles/<name>", format = "json", data = "<data>")]
+pub async fn update_console_metadata(
+    name: String,
+    data: Json<V1ConsoleUpdateRequest>,
+    user: AuthenticatedUser,
+) -> V1ApiResponseType<String> {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
+        return Err(V1ApiError::NotAuthorized);
+    }
+
+    sqlx::query!(
+        "UPDATE consoles SET card_color = $1 WHERE name = $2",
+        data.card_color,
+        name
+    )
+    .execute(&*SQL)
+    .await
+    .map_err(|_| V1ApiError::InternalError)?;
+
+    Ok(V1ApiResponse(name))
+}
+
+#[delete("/api/v1/consoles/<name>")]
+pub async fn delete_console(name: String, user: AuthenticatedUser) -> V1ApiResponseType<()> {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
+        return Err(V1ApiError::NotAuthorized);
+    }
+
+    sqlx::query!("DELETE FROM consoles WHERE name = $1", name)
+        .execute(&*SQL)
+        .await
+        .map_err(|e| {
+            eprintln!("Failed to delete console {}: {:?}", name, e);
+            V1ApiError::InternalError
+        })?;
+
+    Ok(V1ApiResponse(()))
 }

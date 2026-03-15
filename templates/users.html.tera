@@ -1,51 +1,75 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
     <head>
-        <title>User Management</title>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>User Management | emuNEX</title>
+        <link rel="stylesheet" href="/public/css/dev.css" />
     </head>
     <body>
-        <h1>User Management</h1>
+        <div class="auth-container" style="max-width: 800px;">
+            <div class="auth-card">
+                <header class="card-header">
+                    <a href="/dev" class="back-link">Back</a>
+                    <h1>emuNEX</h1>
+                    <p class="tagline">User Management & Roles</p>
+                </header>
 
-        <table border="1">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Role</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user in users %}
-                <tr data-id="{{ user.id }}">
-                    <td>{{ user.id }}</td>
-                    <td>
-                        <input type="text" class="edit-username" value="{{ user.username }}" />
-                    </td>
-                    <td>
-                        <select class="edit-role">
-                            <option value="user" {% if user.role == "user" %}selected{% endif %}>user</option>
-                            <option value="moderator" {% if user.role == "moderator" %}selected{% endif %}>moderator</option>
-                            <option value="admin" {% if user.role == "admin" %}selected{% endif %}>admin</option>
-                        </select>
-                    </td>
-                    <td>
-                        <button onclick="saveUser({{ user.id }})">Save</button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                <div class="content">
+                    <div class="section-hint">Registered Users</div>
 
-        <p id="statusMessage"></p>
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>Role</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr data-id="{{ user.id }}">
+                                    <td style="font-family: monospace; font-weight: 700; color: var(--color-text-muted);">#{{ user.id }}</td>
+                                    <td>
+                                        <input type="text" class="edit-username" value="{{ user.username }}" style="padding: var(--spacing-sm); font-weight: 700;" />
+                                    </td>
+                                    <td>
+                                        <select class="edit-role" style="padding: var(--spacing-sm); font-weight: 700;">
+                                            <option value="user" {% if user.role == "user" %}selected{% endif %}>User</option>
+                                            <option value="moderator" {% if user.role == "moderator" %}selected{% endif %}>Moderator</option>
+                                            <option value="admin" {% if user.role == "admin" %}selected{% endif %}>Admin</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <button class="nintendo-btn" onclick="saveUser({{ user.id }})" style="margin: 0; min-width: 80px;">
+                                            <span class="btn-edge" style="border-radius: var(--radius-sm);"></span>
+                                            <span class="btn-front" style="padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.8rem;">Save</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="statusBox" class="status-box"></div>
+                </div>
+            </div>
+        </div>
 
         <script>
             async function saveUser(userId) {
                 const row = document.querySelector(`tr[data-id="${userId}"]`);
                 const username = row.querySelector(".edit-username").value;
                 const role = row.querySelector(".edit-role").value;
-                const status = document.getElementById("statusMessage");
+                const statusBox = document.getElementById("statusBox");
                 const token = localStorage.getItem("token");
+
+                statusBox.innerText = "Saving changes...";
+                statusBox.className = "status-box status-success";
+                statusBox.style.display = "block";
 
                 try {
                     const response = await fetch(`/api/v1/users/${userId}`, {
@@ -58,16 +82,16 @@
                     });
 
                     if (response.ok) {
-                        status.innerText = "User updated successfully";
-                        status.style.color = "green";
+                        statusBox.innerText = `User ${username} updated successfully!`;
+                        statusBox.className = "status-box status-success";
                     } else {
                         const result = await response.json();
-                        status.innerText = `Error: ${result.error}`;
-                        status.style.color = "red";
+                        statusBox.innerText = `Error: ${result.error || "Update failed"}`;
+                        statusBox.className = "status-box status-error";
                     }
                 } catch (err) {
-                    status.innerText = "Network error.";
-                    status.style.color = "red";
+                    statusBox.innerText = "A network error occurred.";
+                    statusBox.className = "status-box status-error";
                 }
             }
         </script>

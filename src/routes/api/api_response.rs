@@ -31,3 +31,4 @@ where
 
 impl V1ApiResponseTrait for i32 {}
 impl V1ApiResponseTrait for () {}
+impl V1ApiResponseTrait for String {}

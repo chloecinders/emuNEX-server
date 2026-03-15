@@ -43,3 +43,12 @@ pub async fn download_object(key: &str) -> Result<Vec<u8>, String> {
     })?;
     Ok(response.to_vec())
 }
+
+pub async fn delete_object(key: &str) -> Result<(), String> {
+    let bucket = &*S3;
+    bucket.delete_object(key).await.map_err(|e| {
+        error!("S3 delete error for key {}: {:?}", key, e);
+        format!("S3 delete error: {e}")
+    })?;
+    Ok(())
+}

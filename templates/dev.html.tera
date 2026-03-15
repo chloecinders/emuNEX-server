@@ -1,52 +1,86 @@
+<!DOCTYPE html>
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>dev</title>
+        <title>Developer Portal | emuNEX</title>
+        <link rel="stylesheet" href="/public/css/dev.css" />
     </head>
     <body>
-        <div>your role is {{ role }}</div>
-        <div>
-            <a href="/roms/upload">upload rom</a>
-        </div>
-        <div>
-            <a href="/emulators/upload">upload emulator</a>
-        </div>
-        <div>
-            <a href="/consoles/upload">upload console</a>
-        </div>
-        {% if role == "Admin" %}
-        <div><a href="/users">manage users</a></div>
-        <hr />
-        <div>
-            <button id="updateBtn" onclick="triggerUpdate()">pull update and restart</button>
-            <p id="status"></p>
+        <div class="auth-container">
+            <div class="auth-card">
+                <header class="card-header">
+                    <h1>emuNEX</h1>
+                    <p class="tagline">Developer & Moderator Portal</p>
+                </header>
+
+                <div class="content">
+                    <div class="section-hint">Management Actions</div>
+
+                    <div class="nav-links">
+                        <a href="/roms" class="nav-btn">
+                            <span>Manage ROM</span>
+                        </a>
+                        <a href="/emulators" class="nav-btn">
+                            <span>Manage Emulator</span>
+                        </a>
+                        <a href="/consoles" class="nav-btn">
+                            <span>Manage Consoles</span>
+                        </a>
+                        <a href="/users" class="nav-btn">
+                            <span>Manage Users</span>
+                        </a>
+                    </div>
+
+                    {% if role == "Admin" %}
+                    <div class="admin-section">
+                        <div class="section-hint">System Maintenance</div>
+                        <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: var(--spacing-md);">
+                            Connected as: <strong>{{ role }}</strong>
+                        </p>
+
+                        <button id="updateBtn" class="nintendo-btn" onclick="triggerUpdate()">
+                            <span class="btn-edge"></span>
+                            <span class="btn-front">Pull Update & Restart</span>
+                        </button>
+
+                        <div id="statusBox" class="status-box"></div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
+        {% if role == "Admin" %}
         <script>
             async function triggerUpdate() {
                 const btn = document.getElementById("updateBtn");
-                const status = document.getElementById("status");
+                const statusBox = document.getElementById("statusBox");
 
-                if (!confirm("confirm restart?")) return;
+                if (!confirm("Are you sure you want to restart the server for an update?")) return;
 
                 btn.disabled = true;
-                status.innerText = "triggering...";
+                statusBox.innerText = "Triggering update...";
+                statusBox.className = "status-box status-success";
+                statusBox.style.display = "block";
 
                 try {
                     const response = await fetch("/admin/update", { method: "POST" });
                     const text = await response.text();
 
                     if (text && text.length > 0) {
-                        status.innerText = "error: " + text;
+                        statusBox.innerText = "Error: " + text;
+                        statusBox.className = "status-box status-error";
                         btn.disabled = false;
                     } else {
-                        status.innerText = "error: empty response";
+                        statusBox.innerText = "Error: Received empty response from server.";
+                        statusBox.className = "status-box status-error";
                         btn.disabled = false;
                     }
                 } catch (err) {
-                    status.innerText = "restarting...";
-                    setTimeout(() => location.reload(), 5000);
+                    statusBox.innerText = "Server is restarting...";
+                    statusBox.className = "status-box status-success";
+                    setTimeout(() => location.reload(), 8000);
                 }
             }
         </script>

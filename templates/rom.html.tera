@@ -1,69 +1,134 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
     <head>
-        <title>Add New ROM</title>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Upload ROM | emuNEX</title>
+        <link rel="stylesheet" href="/public/css/dev.css" />
     </head>
     <body>
-        <h1>Upload ROM to Collection</h1>
+        <div class="auth-container">
+            <div class="auth-card">
+                <header class="card-header">
+                    <a href="/dev" class="back-link">Back</a>
+                    <h1>emuNEX</h1>
+                    <p class="tagline">Add New ROM to Collection</p>
+                </header>
 
-        <form id="uploadForm">
-            <div>
-                <label>Title:</label><br />
-                <input type="text" id="title" name="title" required />
+                <div class="content">
+                    <form id="uploadForm">
+                        <div class="section-hint">Game Metadata</div>
+
+                        <div class="form-group">
+                            <label for="title">Title</label>
+                            <input type="text" id="title" name="title" placeholder="e.g. Metroid Fusion" required />
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md)">
+                            <div class="form-group">
+                                <label for="console">Console</label>
+                                <input type="text" id="console" name="console" placeholder="GBA" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="category">Category</label>
+                                <input type="text" id="category" name="category" placeholder="Action" required />
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md)">
+                            <div class="form-group">
+                                <label for="region">Region</label>
+                                <input type="text" id="region" name="region" placeholder="USA" />
+                            </div>
+                            <div class="form-group">
+                                <label for="release_year">Year</label>
+                                <input type="number" id="release_year" name="release_year" placeholder="2002" />
+                            </div>
+                        </div>
+
+                        <div class="section-hint">Assets</div>
+
+                        <div class="form-group">
+                            <label>ROM File</label>
+                            <label for="rom_file" class="upload-zone" id="romDropZone">
+                                <div class="upload-icon">↑</div>
+                                <div class="upload-info">
+                                    <div class="upload-text">Upload ROM file</div>
+                                    <div id="romFileName" class="file-name"></div>
+                                </div>
+                                <input type="file" id="rom_file" name="rom_file" required style="display: none" />
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Cover Image</label>
+                            <label for="image_file" class="upload-zone" id="imageDropZone">
+                                <div class="upload-icon">↑</div>
+                                <div class="upload-info">
+                                    <div class="upload-text">Upload cover image</div>
+                                    <div id="imageFileName" class="file-name"></div>
+                                </div>
+                                <input type="file" id="image_file" name="image_file" required style="display: none" />
+                            </label>
+                        </div>
+
+                        <button type="submit" id="submitBtn" class="nintendo-btn">
+                            <span class="btn-edge"></span>
+                            <span class="btn-front">Upload to Collection</span>
+                        </button>
+                    </form>
+
+                    <div id="statusBox" class="status-box"></div>
+                </div>
             </div>
-
-            <div>
-                <label>Console:</label><br />
-                <input type="text" id="console" name="console" placeholder="GBA" required />
-            </div>
-
-            <div>
-                <label>Category:</label><br />
-                <input type="text" id="category" name="category" placeholder="Metroidvania" required />
-            </div>
-
-            <div>
-                <label>Region:</label><br />
-                <input type="text" id="region" name="region" placeholder="USA" />
-            </div>
-
-            <div>
-                <label>Year:</label><br />
-                <input type="number" id="release_year" name="release_year" />
-            </div>
-
-            <hr />
-
-            <div>
-                <label>ROM:</label><br />
-                <input type="file" id="rom_file" name="rom_file" required />
-            </div>
-
-            <div>
-                <label>Cover:</label><br />
-                <input type="file" id="image_file" name="image_file" required />
-            </div>
-
-            <div style="margin-top: 20px">
-                <button type="submit" id="submitBtn">Upload</button>
-            </div>
-        </form>
-
-        <p id="statusMessage"></p>
+        </div>
 
         <script>
+            function setupUploadZone(zoneId, inputId, nameId) {
+                const zone = document.getElementById(zoneId);
+                const input = document.getElementById(inputId);
+                const display = document.getElementById(nameId);
+
+                input.addEventListener("change", () => {
+                    if (input.files.length) display.textContent = input.files[0].name;
+                });
+
+                ["dragenter", "dragover"].forEach((name) => {
+                    zone.addEventListener(name, (e) => {
+                        e.preventDefault();
+                        zone.classList.add("dragover");
+                    });
+                });
+
+                ["dragleave", "drop"].forEach((name) => {
+                    zone.addEventListener(name, (e) => {
+                        e.preventDefault();
+                        zone.classList.remove("dragover");
+                    });
+                });
+
+                zone.addEventListener("drop", (e) => {
+                    input.files = e.dataTransfer.files;
+                    if (input.files.length) display.textContent = input.files[0].name;
+                });
+            }
+
+            setupUploadZone("romDropZone", "rom_file", "romFileName");
+            setupUploadZone("imageDropZone", "image_file", "imageFileName");
+
             document.getElementById("uploadForm").addEventListener("submit", async (e) => {
                 e.preventDefault();
 
                 const btn = document.getElementById("submitBtn");
-                const status = document.getElementById("statusMessage");
+                const statusBox = document.getElementById("statusBox");
                 const formData = new FormData(e.target);
 
                 const token = localStorage.getItem("token");
 
                 btn.disabled = true;
-                status.innerText = "Uploading to SeaweedFS and updating Postgres...";
-                status.style.color = "black";
+                statusBox.innerText = "Processing upload...";
+                statusBox.className = "status-box status-success";
+                statusBox.style.display = "block";
 
                 try {
                     const response = await fetch("/api/v1/roms/upload", {
@@ -77,16 +142,18 @@
                     const result = await response.json();
 
                     if (response.ok) {
-                        status.innerText = `Success ID: ${result.data}`;
-                        status.style.color = "green";
+                        statusBox.innerText = `Success! ROM ID: ${result.data}`;
+                        statusBox.className = "status-box status-success";
                         e.target.reset();
+                        document.getElementById("romFileName").textContent = "";
+                        document.getElementById("imageFileName").textContent = "";
                     } else {
-                        status.innerText = `Error: ${result.error || "Upload failed"}`;
-                        status.style.color = "red";
+                        statusBox.innerText = `Error: ${result.error || "Upload failed"}`;
+                        statusBox.className = "status-box status-error";
                     }
                 } catch (err) {
-                    status.innerText = "Network error occurred.";
-                    status.style.color = "red";
+                    statusBox.innerText = "A network error occurred.";
+                    statusBox.className = "status-box status-error";
                 } finally {
                     btn.disabled = false;
                 }

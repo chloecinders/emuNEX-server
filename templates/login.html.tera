@@ -3,89 +3,73 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>{{ auth_type | capitalize }}</title>
-        <style>
-            body { font-family: monospace; padding: 2rem; max-width: 400px; }
-            form { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
-            #error { color: red; margin-bottom: 1rem; border: 1px solid red; padding: 0.5rem; }
-        </style>
+        <title>{{ auth_type | capitalize }} | Emunex</title>
+        <link rel="stylesheet" href="/public/css/auth.css" />
     </head>
     <body>
-        <div id="error" style="display: none"></div>
+        <div class="auth-container">
+            <div class="auth-card">
+                <header class="card-header">
+                    <h1>emuNEX</h1>
+                    <p class="tagline">Remote Emulation & Library Management</p>
+                </header>
 
-        <form id="form">
-            <h1>{{ auth_type }}</h1>
+                <div class="content">
+                    <div class="error-bubble"></div>
 
-            <input id="username" type="text" placeholder="username" required autocomplete="username" />
-            <input id="password" type="password" placeholder="password" required autocomplete="current-password" />
+                    <form id="form">
+                        <div class="section-hint">
+                            {% if auth_type == "login" %}
+                            Authenticate
+                            {% else %}
+                            Create Account
+                            {% endif %}
+                        </div>
 
-            {% if auth_type == "register" %}
-            <input id="confirm" type="password" placeholder="confirm password" required />
-            {% endif %}
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input id="username" type="text" placeholder="Enter your username" required autocomplete="username" />
+                        </div>
 
-            <button type="submit">Submit</button>
-        </form>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input id="password" type="password" placeholder="••••••••" required autocomplete="current-password" />
+                        </div>
 
-        <nav>
-            {% if auth_type == "login" %}
-            <a href="/auth/register">register instead?</a>
-            {% else %}
-            <a href="/auth/login">login instead?</a>
-            {% endif %}
-        </nav>
+                        {% if auth_type == "register" %}
+                        <div class="form-group">
+                            <label for="confirm">Confirm Password</label>
+                            <input id="confirm" type="password" placeholder="••••••••" required />
+                        </div>
+                        {% endif %}
+
+                        <button type="submit" class="nintendo-btn">
+                            <span class="btn-edge"></span>
+                            <span class="btn-front">
+                                {% if auth_type == "login" %}
+                                Connect
+                                {% else %}
+                                Register
+                                {% endif %}
+                            </span>
+                        </button>
+                    </form>
+
+                    <div class="auth-footer">
+                        {% if auth_type == "login" %}
+                        Don't have an account? <a href="/auth/register">Register instead</a>
+                        {% else %}
+                        Already have an account? <a href="/auth/login">Login instead</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const authType = "{{ auth_type }}";
+            const domain = "{{ domain | safe }}";
+        </script>
+        <script src="/public/js/auth.js"></script>
     </body>
-
-    <script>
-        const authType = "{{ auth_type }}";
-        const errorEl = document.querySelector("#error");
-        const form = document.querySelector("#form");
-
-        form.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            errorEl.style.display = "none";
-
-            const username = document.querySelector("#username").value;
-            const password = document.querySelector("#password").value;
-
-            if (authType === "register") {
-                const confirm = document.querySelector("#confirm").value;
-                if (password !== confirm) {
-                    showError("passwords do not match");
-                    return;
-                }
-            }
-
-            try {
-                const res = await fetch(`/api/v1/${authType}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ username, password }),
-                });
-
-                const json = await res.json();
-
-                if (!res.ok || !json.success) {
-                    throw new Error(json.message || `Server returned ${res.status}`);
-                }
-
-                console.log("logged in!", json.data.token);
-                localStorage.setItem("token", json.data.token);
-
-                await cookieStore.set({
-                    name: "token",
-                    value: json.data.token,
-                    expires: Date.now() + 86400000,
-                });
-
-                window.location.href = `emunex://login?token=${json.data.token}&domain={{ domain | safe }}&storage_path=/storage`
-            } catch (err) {
-                showError(`${authType} error: ${err.message}`);
-            }
-        });
-
-        function showError(msg) {
-            errorEl.innerText = msg;
-            errorEl.style.display = "block";
-        }
-    </script>
 </html>

@@ -1,5 +1,5 @@
 # emuNEX (server)
-Emulation made easy.
+Remote Emulation & Library Management.
 
 emuNEX is a service, think of it like Steam, but for emulators. This server will get client connections to download emulators and games. In the future it could handle features such as saving game save files or profiles/friends.
 
