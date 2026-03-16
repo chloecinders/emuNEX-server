@@ -1,12 +1,12 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id,\n            name,\n            console,\n            platform,\n            run_command,\n            binary_path,\n            md5_hash,\n            config_files as \"config_files!\",\n            zipped as \"zipped!\",\n            created_at\n        FROM emulators\n        WHERE console = $1 AND platform = $2\n        ORDER BY name ASC\n        ",
+  "query": "\n        SELECT\n            id,\n            name,\n            console,\n            platform,\n            run_command,\n            binary_path,\n            save_path,\n            md5_hash,\n            config_files as \"config_files!\",\n            zipped as \"zipped!\",\n            file_size as \"file_size!\",\n            created_at\n        FROM emulators\n        WHERE LOWER(console) = LOWER($1) AND platform = $2\n        ORDER BY name ASC\n        ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
         "name": "id",
-        "type_info": "Int4"
+        "type_info": "Int8"
       },
       {
         "ordinal": 1,
@@ -35,21 +35,31 @@
       },
       {
         "ordinal": 6,
+        "name": "save_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
         "name": "md5_hash",
         "type_info": "Bpchar"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "config_files!",
         "type_info": "TextArray"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "zipped!",
         "type_info": "Bool"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
+        "name": "file_size!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 11,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
@@ -70,8 +80,10 @@
       true,
       true,
       false,
+      false,
+      false,
       true
     ]
   },
-  "hash": "5d1b84aa745941bf6823c43625ce8c4755e22962e1e14bb7c8cd93a71bfd10f2"
+  "hash": "d69f809fbfbb84b4642c226715b34f2b84a8104be2505c6742ee06d8c809050b"
 }

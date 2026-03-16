@@ -12,7 +12,6 @@
                 <header class="card-header">
                     <a href="/dev" class="back-link">Back</a>
                     <h1>emuNEX</h1>
-                    <p class="tagline">Emulator Library</p>
                 </header>
 
                 <div class="content">
@@ -24,12 +23,7 @@
                             margin-bottom: var(--spacing-md);
                         "
                     >
-                        <div class="section-hint" style="margin: 0">Emulator Library</div>
-                        <a
-                            href="/emulators/upload"
-                            class="nintendo-btn btn-fit"
-                            style="margin: 0; text-decoration: none"
-                        >
+                        <a href="/emulators/upload" class="popout-btn btn-fit" style="margin: 0; text-decoration: none">
                             <span class="btn-edge" style="border-radius: var(--radius-sm)"></span>
                             <span
                                 class="btn-front"
@@ -116,7 +110,12 @@
 
                         <div class="form-group">
                             <label>Run Command (with args)</label>
-                            <input type="text" id="edit-command" placeholder="emu.exe {rom}" required />
+                            <input type="text" id="edit-command" placeholder="emu.exe {rom}" />
+                        </div>
+
+                        <div class="form-group">
+                            <label>Save Path (optional)</label>
+                            <input type="text" id="edit-save-path" placeholder="/saves/$rom_name.sav" />
                         </div>
 
                         <div class="form-group">
@@ -126,7 +125,7 @@
                                     <input
                                         type="text"
                                         id="tag-input"
-                                        placeholder="e.g. config.ini"
+                                        placeholder="config.ini"
                                         onkeydown="handleTagInput(event)"
                                     />
                                 </div>
@@ -159,13 +158,13 @@
                         </div>
 
                         <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-lg)">
-                            <button type="submit" class="nintendo-btn btn-fit btn-info" style="flex: 1; margin: 0">
+                            <button type="submit" class="popout-btn btn-fit btn-info" style="flex: 1; margin: 0">
                                 <span class="btn-edge"></span>
                                 <span class="btn-front" style="padding: 10px">Save Changes</span>
                             </button>
                             <button
                                 type="button"
-                                class="nintendo-btn btn-fit"
+                                class="popout-btn btn-fit"
                                 onclick="closeModal()"
                                 style="flex: 1; margin: 0; --btn-color-primary: #666; --btn-color-dark: #333"
                             >
@@ -222,14 +221,14 @@
                     row.innerHTML = `
                         <td style="font-family: monospace; font-weight: 700; color: var(--color-text-muted);">#${emu.id}</td>
                         <td style="font-weight: 700;">${emu.name}</td>
-                        <td style="font-weight: 800; color: var(--color-primary);">${emu.console}</td>
+                        <td style="font-weight: 800;">${emu.console}</td>
                         <td style="text-transform: uppercase; font-size: 0.8rem; font-weight: 700;">${emu.platform}</td>
                         <td style="display: flex; gap: var(--spacing-xs);">
-                            <button class="nintendo-btn btn-fit btn-info" onclick="openEdit(${emu.id})" style="margin: 0;">
+                            <button class="popout-btn btn-fit btn-info" onclick="openEdit('${emu.id}')" style="margin: 0;">
                                 <span class="btn-edge" style="border-radius: var(--radius-sm);"></span>
                                 <span class="btn-front" style="padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.75rem; min-width: 60px;">Edit</span>
                             </button>
-                            <button class="nintendo-btn btn-fit btn-error" onclick="deleteEmulator(${emu.id}, this)" style="margin: 0;">
+                            <button class="popout-btn btn-fit btn-error" onclick="deleteEmulator('${emu.id}', this)" style="margin: 0;">
                                 <span class="btn-edge" style="border-radius: var(--radius-sm);"></span>
                                 <span class="btn-front" style="padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.75rem; min-width: 60px;">Delete</span>
                             </button>
@@ -251,7 +250,7 @@
             }
 
             function openEdit(id) {
-                const emu = allEmulators.find((e) => e.id === id);
+                const emu = allEmulators.find((e) => String(e.id) === String(id));
                 if (!emu) return;
 
                 document.getElementById("edit-id").value = emu.id;
@@ -259,6 +258,7 @@
                 document.getElementById("edit-console").value = emu.console;
                 document.getElementById("edit-platform").value = emu.platform;
                 document.getElementById("edit-command").value = emu.run_command;
+                document.getElementById("edit-save-path").value = emu.save_path || "";
                 document.getElementById("edit-zipped").checked = emu.zipped;
                 document.getElementById("edit-binary").value = "";
                 document.getElementById("edit-bin-name").textContent = "";
@@ -317,6 +317,7 @@
                     console: document.getElementById("edit-console").value,
                     platform: document.getElementById("edit-platform").value,
                     run_command: document.getElementById("edit-command").value,
+                    save_path: document.getElementById("edit-save-path").value,
                     config_files: currentTags,
                     zipped: document.getElementById("edit-zipped").checked,
                 };

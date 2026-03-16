@@ -1,0 +1,78 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, dat_name, name, serial, md5, crc, sha1, size, clone_of, status\n               FROM nointro_games\n               WHERE (dat_name = $1 OR $1 IS NULL)\n                 AND (\n                     name ILIKE '%' || $2 || '%'\n                     OR serial ILIKE $2 || '%'\n                 )\n               ORDER BY\n                   CASE WHEN serial ILIKE $2 THEN 0 ELSE 1 END,\n                   name ASC\n               LIMIT $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "dat_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "serial",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "md5",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "crc",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "sha1",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "size",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "clone_of",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "status",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "77477e2f3184d0977949d407cd71125ec38a6e53a50b187ab8edef174bb50222"
+}

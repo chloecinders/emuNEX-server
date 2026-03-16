@@ -14,6 +14,7 @@ use crate::{
         api_response::V1ApiResponseTrait,
         v1::guards::{AuthenticatedUser, UserRole},
     },
+    utils::{id::Id, snowflake::next_id},
 };
 
 #[derive(Serialize)]
@@ -36,6 +37,7 @@ pub async fn client_start() -> V1ApiResponseType<V1ClientStartResponse> {
 pub struct V1AuthRegisterRequest {
     pub username: String,
     pub password: String,
+    pub invite_code: String,
 }
 
 #[derive(Serialize)]
@@ -51,6 +53,15 @@ pub async fn register(
 ) -> V1ApiResponseType<V1AuthResponse> {
     let data = request_data.into_inner();
 
+    let invite = sqlx::query!(
+        "SELECT id FROM invite_codes WHERE code = $1 AND used_by IS NULL",
+        data.invite_code
+    )
+    .fetch_optional(&*SQL)
+    .await
+    .map_err(|_| V1ApiError::InternalError)?
+    .ok_or(V1ApiError::NotFound)?;
+
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
     let password_hash = argon2
@@ -58,12 +69,17 @@ pub async fn register(
         .map_err(|_| V1ApiError::InternalError)?
         .to_string();
 
-    let user = sqlx::query!(
-        "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id",
+    let user_id = next_id();
+
+    let mut tx = SQL.begin().await.map_err(|_| V1ApiError::InternalError)?;
+
+    sqlx::query!(
+        "INSERT INTO users (id, username, password) VALUES ($1, $2, $3)",
+        user_id,
         data.username,
         password_hash
     )
-    .fetch_one(&*SQL)
+    .execute(&mut *tx)
     .await
     .map_err(|e| {
         if let Some(db_err) = e.as_database_error() {
@@ -74,11 +90,24 @@ pub async fn register(
         V1ApiError::InternalError
     })?;
 
+    sqlx::query!(
+        "UPDATE invite_codes SET used_by = $1, used_at = NOW() WHERE id = $2",
+        user_id,
+        invite.id
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(|_| V1ApiError::InternalError)?;
+
+    tx.commit().await.map_err(|_| V1ApiError::InternalError)?;
+
     let token = Uuid::new_v4().to_string();
+    let token_id = next_id();
 
     sqlx::query!(
-        "INSERT INTO user_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '24 hours')",
-        user.id,
+        "INSERT INTO user_tokens (id, user_id, token, expires_at) VALUES ($1, $2, $3, NOW() + INTERVAL '30 days')",
+        token_id,
+        user_id,
         token
     )
     .execute(&*SQL)
@@ -114,9 +143,11 @@ pub async fn login(request_data: Json<V1AuthLoginRequest>) -> V1ApiResponseType<
         .map_err(|_| V1ApiError::NotAuthorized)?;
 
     let token = Uuid::new_v4().to_string();
+    let token_id = next_id();
 
     sqlx::query!(
-        "INSERT INTO user_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '24 hours')",
+        "INSERT INTO user_tokens (id, user_id, token, expires_at) VALUES ($1, $2, $3, NOW() + INTERVAL '30 days')",
+        token_id,
         user.id,
         token
     )
@@ -129,7 +160,7 @@ pub async fn login(request_data: Json<V1AuthLoginRequest>) -> V1ApiResponseType<
 
 #[derive(Serialize)]
 pub struct V1AuthMeResponse {
-    id: i32,
+    id: Id,
     username: String,
     role: UserRole,
 }

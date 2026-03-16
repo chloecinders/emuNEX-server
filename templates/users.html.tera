@@ -12,12 +12,9 @@
                 <header class="card-header">
                     <a href="/dev" class="back-link">Back</a>
                     <h1>emuNEX</h1>
-                    <p class="tagline">User Management & Roles</p>
                 </header>
 
                 <div class="content">
-                    <div class="section-hint">Registered Users</div>
-
                     <div style="overflow-x: auto;">
                         <table>
                             <thead>
@@ -43,7 +40,7 @@
                                         </select>
                                     </td>
                                     <td>
-                                        <button class="nintendo-btn" onclick="saveUser({{ user.id }})" style="margin: 0; min-width: 80px;">
+                                        <button class="popout-btn" onclick="saveUser({{ user.id }})" style="margin: 0; min-width: 80px;">
                                             <span class="btn-edge" style="border-radius: var(--radius-sm);"></span>
                                             <span class="btn-front" style="padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.8rem;">Save</span>
                                         </button>
@@ -55,17 +52,68 @@
                     </div>
 
                     <div id="statusBox" class="status-box"></div>
+
+                    <div style="margin-top: 40px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2 style="margin: 0;">Invite Codes</h2>
+                            <button class="popout-btn" onclick="generateInvite()" style="margin: 0; min-width: 150px;">
+                                <span class="btn-edge"></span>
+                                <span class="btn-front">Generate Code</span>
+                            </button>
+                        </div>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Status</th>
+                                    <th>Created At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inviteTableBody">
+                                {% for invite in invites %}
+                                <tr data-code="{{ invite.code }}">
+                                    <td style="font-family: monospace; font-weight: 700;">{{ invite.code }}</td>
+                                    <td>
+                                        {% if invite.used_by_username %}
+                                        <span style="color: var(--color-text-muted);">Used by <strong>{{ invite.used_by_username }}</strong></span>
+                                        {% else %}
+                                        <span style="color: #48bb78; font-weight: 700;">Unused</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="font-size: 0.8rem; color: var(--color-text-muted);">
+                                        {% if invite.created_at %}
+                                        {{ invite.created_at | date(format="%Y-%m-%d %H:%M") }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if not invite.used_by_username %}
+                                        <button class="popout-btn" onclick="deleteInvite('{{ invite.code }}')" style="margin: 0; min-width: 80px;">
+                                            <span class="btn-edge" style="border-radius: var(--radius-sm); background: #f56565;"></span>
+                                            <span class="btn-front" style="padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; background: #e53e3e;">Delete</span>
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
 
         <script>
+            const token = localStorage.getItem("token");
+
             async function saveUser(userId) {
                 const row = document.querySelector(`tr[data-id="${userId}"]`);
                 const username = row.querySelector(".edit-username").value;
                 const role = row.querySelector(".edit-role").value;
                 const statusBox = document.getElementById("statusBox");
-                const token = localStorage.getItem("token");
 
                 statusBox.innerText = "Saving changes...";
                 statusBox.className = "status-box status-success";
@@ -92,6 +140,56 @@
                 } catch (err) {
                     statusBox.innerText = "A network error occurred.";
                     statusBox.className = "status-box status-error";
+                }
+            }
+
+            async function generateInvite() {
+                const statusBox = document.getElementById("statusBox");
+                statusBox.innerText = "Generating invite code...";
+                statusBox.className = "status-box status-success";
+                statusBox.style.display = "block";
+
+                try {
+                    const response = await fetch("/api/v1/invites", {
+                        method: "POST",
+                        headers: { "Authorization": token }
+                    });
+
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        const result = await response.json();
+                        statusBox.innerText = `Error: ${result.error || "Generation failed"}`;
+                        statusBox.className = "status-box status-error";
+                    }
+                } catch (err) {
+                    statusBox.innerText = "A network error occurred.";
+                    statusBox.className = "status-box status-error";
+                }
+            }
+
+            async function deleteInvite(code) {
+                if (!confirm(`Are you sure you want to delete invite code ${code}?`)) return;
+
+                const statusBox = document.getElementById("statusBox");
+                try {
+                    const response = await fetch(`/api/v1/invites/${code}`, {
+                        method: "DELETE",
+                        headers: { "Authorization": token }
+                    });
+
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        const result = await response.json();
+                        statusBox.innerText = `Error: ${result.error || "Deletion failed"}`;
+                        statusBox.className = "status-box status-error";
+                        statusBox.style.display = "block";
+                    }
+                } catch (err) {
+                    statusBox.innerText = "A network error occurred.";
+                    statusBox.className = "status-box status-error";
+                    statusBox.style.display = "block";
                 }
             }
         </script>

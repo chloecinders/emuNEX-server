@@ -1,9 +1,8 @@
-use std::path::Path;
-
 use rocket::{
+    delete,
     form::{Form, FromForm},
     fs::TempFile,
-    get, post, put, delete,
+    get, post, put,
     serde::json::Json,
 };
 use serde::Serialize;
@@ -16,20 +15,26 @@ use crate::{
         api_response::V1ApiResponseTrait,
         v1::guards::{AuthenticatedUser, UserRole},
     },
-    utils::s3::upload_object,
+    utils::{
+        id::Id,
+        s3::{compute_md5, upload_object},
+        snowflake::next_id,
+    },
 };
 
 #[derive(Serialize, sqlx::FromRow)]
 pub struct V1EmulatorResponse {
-    pub id: i32,
+    pub id: Id,
     pub name: String,
     pub console: String,
     pub platform: String,
     pub run_command: String,
     pub binary_path: String,
+    pub save_path: Option<String>,
     pub md5_hash: Option<String>,
     pub config_files: Vec<String>,
     pub zipped: bool,
+    pub file_size: i64,
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
@@ -51,12 +56,14 @@ pub async fn get_emulators_for_platform(
             platform,
             run_command,
             binary_path,
+            save_path,
             md5_hash,
             config_files as "config_files!",
             zipped as "zipped!",
+            file_size as "file_size!",
             created_at
         FROM emulators
-        WHERE console = $1 AND platform = $2
+        WHERE LOWER(console) = LOWER($1) AND platform = $2
         ORDER BY name ASC
         "#,
         console,
@@ -89,9 +96,11 @@ pub async fn get_all_emulators(
             platform,
             run_command,
             binary_path,
+            save_path,
             md5_hash,
             config_files as "config_files!",
             zipped as "zipped!",
+            file_size as "file_size!",
             created_at
         FROM emulators
         ORDER BY console ASC, name ASC
@@ -113,6 +122,7 @@ pub struct V1EmulatorUploadRequest<'r> {
     pub console: String,
     pub platform: String,
     pub run_command: String,
+    pub save_path: String,
     pub binary_file: TempFile<'r>,
     pub config_files: Vec<String>,
     pub zipped: bool,
@@ -126,21 +136,36 @@ pub struct V1EmulatorUploadRequest<'r> {
 pub async fn emulator_upload(
     data: Form<V1EmulatorUploadRequest<'_>>,
     user: AuthenticatedUser,
-) -> V1ApiResponseType<i32> {
+) -> V1ApiResponseType<Id> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
         return Err(V1ApiError::NotAuthorized);
     }
 
-    let bin_filename = data
+    let bin_ext = data
         .binary_file
         .raw_name()
-        .map(|n| n.dangerous_unsafe_unsanitized_raw())
-        .unwrap_or("emulator.bin".into());
+        .and_then(|n| {
+            let raw = n.dangerous_unsafe_unsanitized_raw();
+            let filename = raw
+                .to_string()
+                .replace('\\', "/")
+                .split('/')
+                .last()
+                .unwrap_or("")
+                .to_string();
+            filename.rsplit_once('.').map(|(_, ext)| ext.to_lowercase())
+        })
+        .unwrap_or_else(|| "bin".to_string());
 
-    let bin_ext = Path::new(bin_filename.as_str())
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .unwrap_or("bin");
+    let bin_bytes = tokio::fs::read(data.binary_file.path().unwrap())
+        .await
+        .map_err(|e| {
+            error!("Failed to read emulator binary from temp storage: {:?}", e);
+            V1ApiError::InternalError
+        })?;
+
+    let file_size = bin_bytes.len() as i64;
+    let md5 = compute_md5(&bin_bytes);
 
     let binary_path = format!(
         "/emulators/{}/{}/{}.{}",
@@ -150,13 +175,6 @@ pub async fn emulator_upload(
         bin_ext
     );
 
-    let bin_bytes = tokio::fs::read(data.binary_file.path().unwrap())
-        .await
-        .map_err(|e| {
-            error!("Failed to read emulator binary from temp storage: {:?}", e);
-            V1ApiError::InternalError
-        })?;
-
     upload_object(&binary_path, &bin_bytes).await.map_err(|e| {
         error!(
             "Failed to upload emulator binary to '{}': {:?}",
@@ -165,25 +183,31 @@ pub async fn emulator_upload(
         V1ApiError::InternalError
     })?;
 
-    let rec = sqlx::query!(
-        "INSERT INTO emulators (name, console, platform, run_command, binary_path, config_files, zipped)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+    let id = next_id();
+
+    sqlx::query!(
+        "INSERT INTO emulators (id, name, console, platform, run_command, save_path, binary_path, md5_hash, config_files, zipped, file_size)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+        id,
         data.name,
         data.console,
         data.platform,
         data.run_command,
+        data.save_path,
         binary_path,
+        md5,
         &data.config_files,
-        data.zipped
+        data.zipped,
+        file_size
     )
-    .fetch_one(&*SQL)
+    .execute(&*SQL)
     .await
     .map_err(|e| {
         error!("Database error inserting emulator '{}': {:?}", data.name, e);
         V1ApiError::InternalError
     })?;
 
-    Ok(V1ApiResponse(rec.id))
+    Ok(V1ApiResponse(Id::new(id)))
 }
 
 #[derive(serde::Deserialize)]
@@ -192,26 +216,28 @@ pub struct V1EmulatorUpdateRequest {
     pub console: String,
     pub platform: String,
     pub run_command: String,
+    pub save_path: String,
     pub config_files: Vec<String>,
     pub zipped: bool,
 }
 
 #[put("/api/v1/emulators/<id>", format = "json", data = "<data>")]
 pub async fn update_emulator(
-    id: i32,
+    id: i64,
     data: Json<V1EmulatorUpdateRequest>,
     user: AuthenticatedUser,
-) -> V1ApiResponseType<i32> {
+) -> V1ApiResponseType<Id> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
         return Err(V1ApiError::NotAuthorized);
     }
 
     sqlx::query!(
-        "UPDATE emulators SET name = $1, console = $2, platform = $3, run_command = $4, config_files = $5, zipped = $6 WHERE id = $7",
+        "UPDATE emulators SET name = $1, console = $2, platform = $3, run_command = $4, save_path = $5, config_files = $6, zipped = $7 WHERE id = $8",
         data.name,
         data.console,
         data.platform,
         data.run_command,
+        data.save_path,
         &data.config_files,
         data.zipped,
         id
@@ -223,7 +249,7 @@ pub async fn update_emulator(
         V1ApiError::InternalError
     })?;
 
-    Ok(V1ApiResponse(id))
+    Ok(V1ApiResponse(Id::new(id)))
 }
 
 #[derive(FromForm)]
@@ -231,9 +257,13 @@ pub struct V1BinaryUpdate<'r> {
     binary: TempFile<'r>,
 }
 
-#[post("/api/v1/emulators/<id>/binary", format = "multipart/form-data", data = "<data>")]
+#[post(
+    "/api/v1/emulators/<id>/binary",
+    format = "multipart/form-data",
+    data = "<data>"
+)]
 pub async fn update_emulator_binary(
-    id: i32,
+    id: i64,
     data: Form<V1BinaryUpdate<'_>>,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<()> {
@@ -244,15 +274,39 @@ pub async fn update_emulator_binary(
     let emu = sqlx::query!("SELECT binary_path FROM emulators WHERE id = $1", id)
         .fetch_optional(&*SQL)
         .await
-        .map_err(|e| { error!("{:?}", e); V1ApiError::InternalError })?
+        .map_err(|e| {
+            error!("{:?}", e);
+            V1ApiError::InternalError
+        })?
         .ok_or(V1ApiError::NotFound)?;
 
     let bin_bytes = tokio::fs::read(data.binary.path().unwrap())
         .await
-        .map_err(|e| { error!("{:?}", e); V1ApiError::InternalError })?;
+        .map_err(|e| {
+            error!("{:?}", e);
+            V1ApiError::InternalError
+        })?;
 
-    upload_object(&emu.binary_path, &bin_bytes).await.map_err(|e| {
-        error!("Failed to upload binary: {:?}", e);
+    let file_size = bin_bytes.len() as i64;
+    let new_md5 = compute_md5(&bin_bytes);
+
+    upload_object(&emu.binary_path, &bin_bytes)
+        .await
+        .map_err(|e| {
+            error!("Failed to upload binary: {:?}", e);
+            V1ApiError::InternalError
+        })?;
+
+    sqlx::query!(
+        "UPDATE emulators SET md5_hash = $1, file_size = $2 WHERE id = $3",
+        new_md5,
+        file_size,
+        id
+    )
+    .execute(&*SQL)
+    .await
+    .map_err(|e| {
+        error!("{:?}", e);
         V1ApiError::InternalError
     })?;
 
@@ -260,7 +314,7 @@ pub async fn update_emulator_binary(
 }
 
 #[delete("/api/v1/emulators/<id>")]
-pub async fn delete_emulator(id: i32, user: AuthenticatedUser) -> V1ApiResponseType<()> {
+pub async fn delete_emulator(id: i64, user: AuthenticatedUser) -> V1ApiResponseType<()> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
         return Err(V1ApiError::NotAuthorized);
     }

@@ -1,0 +1,14 @@
+ALTER TABLE roms DROP COLUMN IF EXISTS is_favorite;
+ALTER TABLE roms DROP COLUMN IF EXISTS play_count;
+ALTER TABLE roms DROP COLUMN IF EXISTS last_played;
+
+ALTER TABLE user_roms ADD COLUMN IF NOT EXISTS id BIGINT;
+ALTER TABLE user_roms ADD COLUMN IF NOT EXISTS is_favorite BOOLEAN DEFAULT FALSE;
+
+DELETE FROM user_roms;
+
+ALTER TABLE user_roms DROP CONSTRAINT user_roms_pkey;
+ALTER TABLE user_roms ALTER COLUMN id SET NOT NULL;
+ALTER TABLE user_roms ADD PRIMARY KEY (id);
+
+ALTER TABLE user_roms ADD CONSTRAINT user_roms_user_rom_unique UNIQUE (user_id, rom_id);

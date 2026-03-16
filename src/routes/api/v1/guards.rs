@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::{SQL, routes::api::V1ApiError};
+use crate::{SQL, routes::api::V1ApiError, utils::id::Id};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, sqlx::Type, PartialEq)]
 #[sqlx(type_name = "user_role", rename_all = "lowercase")]
@@ -12,7 +12,7 @@ pub enum UserRole {
 
 #[derive(Debug, Serialize)]
 pub struct AuthenticatedUser {
-    pub id: i32,
+    pub id: Id,
     pub username: String,
     pub role: UserRole,
 }
@@ -42,6 +42,7 @@ impl<'r> rocket::request::FromRequest<'r> for AuthenticatedUser {
                     FROM users u
                     JOIN user_tokens ut ON u.id = ut.user_id
                     WHERE ut.token = $1
+                      AND ut.expires_at > NOW()
                     "#,
                     t
                 )
@@ -50,7 +51,7 @@ impl<'r> rocket::request::FromRequest<'r> for AuthenticatedUser {
 
                 match user {
                     Ok(Some(row)) => rocket::request::Outcome::Success(AuthenticatedUser {
-                        id: row.id,
+                        id: Id::new(row.id),
                         username: row.username,
                         role: row.role,
                     }),

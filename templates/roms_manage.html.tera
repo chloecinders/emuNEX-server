@@ -12,7 +12,6 @@
                 <header class="card-header">
                     <a href="/dev" class="back-link">Back</a>
                     <h1>emuNEX</h1>
-                    <p class="tagline">ROM Library Management</p>
                 </header>
 
                 <div class="content">
@@ -24,8 +23,7 @@
                             margin-bottom: var(--spacing-md);
                         "
                     >
-                        <div class="section-hint" style="margin: 0">Library Catalog</div>
-                        <a href="/roms/upload" class="nintendo-btn btn-fit" style="margin: 0; text-decoration: none">
+                        <a href="/roms/upload" class="popout-btn btn-fit" style="margin: 0; text-decoration: none">
                             <span class="btn-edge" style="border-radius: var(--radius-sm)"></span>
                             <span
                                 class="btn-front"
@@ -109,11 +107,11 @@
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md)">
                             <div class="form-group">
                                 <label>Region</label>
-                                <input type="text" id="edit-region" placeholder="e.g. USA, Japan" />
+                                <input type="text" id="edit-region" placeholder="USA, Japan" />
                             </div>
                             <div class="form-group">
                                 <label>Release Year</label>
-                                <input type="number" id="edit-year" placeholder="e.g. 1996" />
+                                <input type="number" id="edit-year" placeholder="1996" />
                             </div>
                         </div>
 
@@ -142,13 +140,13 @@
                         </div>
 
                         <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-lg)">
-                            <button type="submit" class="nintendo-btn btn-fit btn-info" style="flex: 1; margin: 0">
+                            <button type="submit" class="popout-btn btn-fit btn-info" style="flex: 1; margin: 0">
                                 <span class="btn-edge"></span>
                                 <span class="btn-front" style="padding: 10px">Save Changes</span>
                             </button>
                             <button
                                 type="button"
-                                class="nintendo-btn btn-fit"
+                                class="popout-btn btn-fit"
                                 onclick="closeModal()"
                                 style="flex: 1; margin: 0; --btn-color-primary: #666; --btn-color-dark: #333"
                             >
@@ -208,13 +206,13 @@
                     row.innerHTML = `
                         <td style="font-family: monospace; font-weight: 700; color: var(--color-text-muted);">#${rom.id}</td>
                         <td style="font-weight: 700;">${rom.title}</td>
-                        <td style="font-weight: 800; color: var(--color-primary);">${rom.console}</td>
+                        <td style="font-weight: 800;">${rom.console}</td>
                         <td style="display: flex; gap: var(--spacing-xs);">
-                            <button class="nintendo-btn btn-fit btn-info" onclick="openEdit(${rom.id})" style="margin: 0;">
+                            <button class="popout-btn btn-fit btn-info" onclick="openEdit(${rom.id})" style="margin: 0;">
                                 <span class="btn-edge" style="border-radius: var(--radius-sm);"></span>
                                 <span class="btn-front" style="padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.75rem; min-width: 60px;">Edit</span>
                             </button>
-                            <button class="nintendo-btn btn-fit btn-error" onclick="deleteRom(${rom.id}, this)" style="margin: 0;">
+                            <button class="popout-btn btn-fit btn-error" onclick="deleteRom(${rom.id}, this)" style="margin: 0;">
                                 <span class="btn-edge" style="border-radius: var(--radius-sm);"></span>
                                 <span class="btn-front" style="padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.75rem; min-width: 60px;">Delete</span>
                             </button>
@@ -242,7 +240,6 @@
                 document.getElementById("edit-region").value = rom.region || "";
                 document.getElementById("edit-year").value = rom.release_year || "";
 
-                // Clear file inputs
                 document.getElementById("edit-file").value = "";
                 document.getElementById("edit-image").value = "";
                 document.getElementById("edit-rom-name").textContent = "";

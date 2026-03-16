@@ -12,7 +12,6 @@
                 <header class="card-header">
                     <a href="/dev" class="back-link">Back</a>
                     <h1>emuNEX</h1>
-                    <p class="tagline">Console Library</p>
                 </header>
 
                 <div class="content">
@@ -24,12 +23,7 @@
                             margin-bottom: var(--spacing-md);
                         "
                     >
-                        <div class="section-hint" style="margin: 0">Console Library</div>
-                        <a
-                            href="/consoles/upload"
-                            class="nintendo-btn btn-fit"
-                            style="margin: 0; text-decoration: none"
-                        >
+                        <a href="/consoles/upload" class="popout-btn btn-fit" style="margin: 0; text-decoration: none">
                             <span class="btn-edge" style="border-radius: var(--radius-sm)"></span>
                             <span
                                 class="btn-front"
@@ -132,13 +126,13 @@
                         </div>
 
                         <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-lg)">
-                            <button type="submit" class="nintendo-btn btn-fit btn-info" style="flex: 1; margin: 0">
+                            <button type="submit" class="popout-btn btn-fit btn-info" style="flex: 1; margin: 0">
                                 <span class="btn-edge"></span>
                                 <span class="btn-front" style="padding: 10px">Save Changes</span>
                             </button>
                             <button
                                 type="button"
-                                class="nintendo-btn btn-fit"
+                                class="popout-btn btn-fit"
                                 onclick="closeModal()"
                                 style="flex: 1; margin: 0; --btn-color-primary: #666; --btn-color-dark: #333"
                             >
@@ -214,11 +208,11 @@
                             </div>
                         </td>
                         <td style="display: flex; gap: var(--spacing-xs);">
-                            <button class="nintendo-btn btn-fit btn-info" onclick="openEdit('${console.name}')" style="margin: 0;">
+                            <button class="popout-btn btn-fit btn-info" onclick="openEdit('${console.name}')" style="margin: 0;">
                                 <span class="btn-edge" style="border-radius: var(--radius-sm);"></span>
                                 <span class="btn-front" style="padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.75rem; min-width: 60px;">Edit</span>
                             </button>
-                            <button class="nintendo-btn btn-fit btn-error" onclick="deleteConsole('${console.name}', this)" style="margin: 0;">
+                            <button class="popout-btn btn-fit btn-error" onclick="deleteConsole('${console.name}', this)" style="margin: 0;">
                                 <span class="btn-edge" style="border-radius: var(--radius-sm);"></span>
                                 <span class="btn-front" style="padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.75rem; min-width: 60px;">Delete</span>
                             </button>

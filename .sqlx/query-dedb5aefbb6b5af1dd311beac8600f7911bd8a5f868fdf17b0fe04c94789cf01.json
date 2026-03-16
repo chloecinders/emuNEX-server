@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO nointro_games (id, dat_name, name, serial, md5, crc, sha1, size, clone_of, status)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n               ON CONFLICT (id) DO UPDATE SET\n                   dat_name = EXCLUDED.dat_name,\n                   name = EXCLUDED.name,\n                   serial = EXCLUDED.serial,\n                   md5 = EXCLUDED.md5,\n                   crc = EXCLUDED.crc,\n                   sha1 = EXCLUDED.sha1,\n                   size = EXCLUDED.size,\n                   clone_of = EXCLUDED.clone_of,\n                   status = EXCLUDED.status",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bpchar",
+        "Bpchar",
+        "Bpchar",
+        "Int8",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dedb5aefbb6b5af1dd311beac8600f7911bd8a5f868fdf17b0fe04c94789cf01"
+}

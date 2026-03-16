@@ -1,10 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
 
 :root {
-    --color-primary: #6B5CB1;
-    --color-primary-light: #8BA0E0;
+    --color-primary: #6b5cb1;
+    --color-primary-light: #8ba0e0;
     --color-primary-dark: #573795;
-    --color-secondary: #CEC1E3;
+    --color-secondary: #cec1e3;
     --color-accent: #ff7e12;
     --color-background: #f0f0f0;
     --color-surface: #ffffff;
@@ -40,7 +40,7 @@
 body {
     margin: 0;
     padding: 0;
-    font-family: 'Inter', sans-serif;
+    font-family: "Inter", sans-serif;
     color: var(--color-text);
     background-color: var(--color-background);
     background-image: radial-gradient(#dcdcdc var(--spacing-xxs), transparent var(--spacing-xxs));
@@ -142,7 +142,7 @@ input {
     border: 2px solid var(--color-border);
     border-radius: var(--radius-md);
     padding: var(--spacing-md);
-    font-family: 'Inter', sans-serif;
+    font-family: "Inter", sans-serif;
     font-size: 0.95rem;
     font-weight: 500;
     transition: all 0.2s;
@@ -160,7 +160,7 @@ input::placeholder {
     opacity: 0.5;
 }
 
-.nintendo-btn {
+.popout-btn {
     position: relative;
     border: none;
     background: transparent;
@@ -202,21 +202,21 @@ input::placeholder {
     background: var(--color-primary-dark);
 }
 
-.nintendo-btn:hover:not(:disabled) .btn-front {
+.popout-btn:hover:not(:disabled) .btn-front {
     transform: translateY(-6px);
     filter: brightness(110%);
 }
 
-.nintendo-btn:active:not(:disabled) .btn-front {
+.popout-btn:active:not(:disabled) .btn-front {
     transform: translateY(-1px);
     transition: transform 34ms;
 }
 
-.nintendo-btn:disabled {
+.popout-btn:disabled {
     cursor: not-allowed;
 }
 
-.nintendo-btn:disabled .btn-front {
+.popout-btn:disabled .btn-front {
     transform: translateY(-1px);
     filter: grayscale(0.8);
     opacity: 0.7;

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM shelf_roms WHERE shelf_id = $1 AND rom_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4d6e6fcfc978d48dcfcf748b4ebc045537748104b8184816db245c2ff81c14c4"
+}

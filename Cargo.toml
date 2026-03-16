@@ -1,8 +1,9 @@
 [package]
 name = "emunex-server"
-description = "Emulation made easy."
+description = "Remote Emulation & Library Management - Server"
+repository = "https://github.com/chloecinders/emuNEX-server"
 authors = ["chloecinders"]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 
 [dependencies]
@@ -15,10 +16,15 @@ rust-s3 = "0.35"
 rocket_dyn_templates = { version = "0.2.0", features = ["tera"] }
 serde = "1.0.228"
 serde_json = "1.0.149"
+serde_with = { version = "3", features = ["macros"] }
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-native-tls", "macros", "postgres", "chrono", "migrate", "json"] }
 tokio = { version = "1.50.0", features = ["full"] }
 toml = "1.0.6"
 uuid = { version = "1.22.0", features = ["v4"] }
 zip = "8.2.0"
 tracing = "0.1.44"
+governor = { version = "0.6", features = [] }
+quick-xml = { version = "0.37" }
+md5 = "0.7"
+dashmap = "6"
 

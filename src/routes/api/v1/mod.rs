@@ -2,6 +2,8 @@ pub mod auth;
 pub mod consoles;
 pub mod emulators;
 pub mod guards;
+pub mod library;
+pub mod nointro;
 pub mod roms;
 pub mod saves;
 pub mod users;

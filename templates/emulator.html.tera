@@ -12,17 +12,17 @@
                 <header class="card-header">
                     <a href="/dev" class="back-link">Back</a>
                     <h1>emuNEX</h1>
-                    <p class="tagline">Emulator Engine Upload</p>
+                    <p class="tagline">Emulator Upload</p>
                 </header>
 
                 <div class="content">
                     <form id="emulatorForm">
                         <div class="section-hint">Emulator Details</div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md);">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md)">
                             <div class="form-group">
                                 <label for="name">Name</label>
-                                <input type="text" id="name" name="name" placeholder="e.g. VBA-M" required />
+                                <input type="text" id="name" name="name" placeholder="VBA-M" required />
                             </div>
                             <div class="form-group">
                                 <label for="console">Console</label>
@@ -41,21 +41,37 @@
 
                         <div class="form-group">
                             <label for="run_command">Run Command</label>
-                            <input type="text" id="run_command" name="run_command" placeholder="--game $rom" required />
+                            <input type="text" id="run_command" name="run_command" placeholder="--game $rom" />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="save_path">Save Path (optional)</label>
+                            <input type="text" id="save_path" name="save_path" placeholder="/saves/$rom_name.sav" />
                         </div>
 
                         <div class="form-group">
                             <label>Config Files</label>
                             <div id="configTags" class="tag-system">
                                 <div class="tag-input-wrapper">
-                                    <input type="text" id="tagInput" placeholder="Type filename and press Enter (e.g. snes9x.conf)" />
+                                    <input
+                                        type="text"
+                                        id="tagInput"
+                                        placeholder="Type filename and press Enter (snes9x.conf)"
+                                    />
                                 </div>
                             </div>
                         </div>
 
-                        <div style="display: flex; align-items: center; gap: var(--spacing-sm); margin: var(--spacing-sm) 0;">
-                            <input type="checkbox" id="zipped" name="zipped" style="width: auto;" />
-                            <label for="zipped" style="margin-bottom: 0;">Is Zipped / Bundle</label>
+                        <div
+                            style="
+                                display: flex;
+                                align-items: center;
+                                gap: var(--spacing-sm);
+                                margin: var(--spacing-sm) 0;
+                            "
+                        >
+                            <input type="checkbox" id="zipped" name="zipped" style="width: auto" />
+                            <label for="zipped" style="margin-bottom: 0">Is Zipped / Bundle</label>
                         </div>
 
                         <div class="section-hint">Files</div>
@@ -68,13 +84,13 @@
                                     <div class="upload-text">Upload emulator bundle</div>
                                     <div id="fileName" class="file-name"></div>
                                 </div>
-                                <input type="file" id="binary_file" name="binary_file" required style="display: none;" />
+                                <input type="file" id="binary_file" name="binary_file" required style="display: none" />
                             </label>
                         </div>
 
-                        <button type="submit" class="nintendo-btn" id="uploadBtn">
+                        <button type="submit" class="popout-btn" id="uploadBtn">
                             <span class="btn-edge"></span>
-                            <span class="btn-front" id="btnText">Upload Emulator</span>
+                            <span class="btn-front" id="submitBtn">Upload Emulator</span>
                         </button>
                     </form>
 
@@ -90,9 +106,9 @@
 
             function renderTags() {
                 const existingTags = configTags.querySelectorAll(".tag");
-                existingTags.forEach(t => t.remove());
+                existingTags.forEach((t) => t.remove());
 
-                tags.forEach(tag => {
+                tags.forEach((tag) => {
                     const tagEl = document.createElement("div");
                     tagEl.className = "tag";
                     tagEl.innerHTML = `${tag} <span class="tag-remove" onclick="removeTag('${tag}')">×</span>`;
@@ -124,27 +140,39 @@
                 }
             });
 
-            ["dragenter", "dragover"].forEach(eventName => {
-                dropZone.addEventListener(eventName, (e) => {
-                    e.preventDefault();
-                    dropZone.classList.add("dragover");
-                }, false);
+            ["dragenter", "dragover"].forEach((eventName) => {
+                dropZone.addEventListener(
+                    eventName,
+                    (e) => {
+                        e.preventDefault();
+                        dropZone.classList.add("dragover");
+                    },
+                    false,
+                );
             });
 
-            ["dragleave", "drop"].forEach(eventName => {
-                dropZone.addEventListener(eventName, (e) => {
-                    e.preventDefault();
-                    dropZone.classList.remove("dragover");
-                }, false);
+            ["dragleave", "drop"].forEach((eventName) => {
+                dropZone.addEventListener(
+                    eventName,
+                    (e) => {
+                        e.preventDefault();
+                        dropZone.classList.remove("dragover");
+                    },
+                    false,
+                );
             });
 
-            dropZone.addEventListener("drop", (e) => {
-                const dt = e.dataTransfer;
-                fileInput.files = dt.files;
-                if (fileInput.files.length) {
-                    fileNameDisplay.textContent = fileInput.files[0].name;
-                }
-            }, false);
+            dropZone.addEventListener(
+                "drop",
+                (e) => {
+                    const dt = e.dataTransfer;
+                    fileInput.files = dt.files;
+                    if (fileInput.files.length) {
+                        fileNameDisplay.textContent = fileInput.files[0].name;
+                    }
+                },
+                false,
+            );
 
             document.getElementById("emulatorForm").addEventListener("submit", async (e) => {
                 e.preventDefault();

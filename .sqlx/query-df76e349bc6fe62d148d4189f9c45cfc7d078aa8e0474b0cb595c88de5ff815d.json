@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT i.code, i.created_at, u.username as used_by_username, i.used_at\n        FROM invite_codes i\n        LEFT JOIN users u ON i.used_by = u.id\n        ORDER BY i.created_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "code",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "used_by_username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "used_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "df76e349bc6fe62d148d4189f9c45cfc7d078aa8e0474b0cb595c88de5ff815d"
+}

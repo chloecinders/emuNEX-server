@@ -80,23 +80,53 @@ pub async fn update_server(user: AuthenticatedUser) -> Result<Status, String> {
             .await
             .map_err(|e| e.to_string())?;
 
-        let extracted_bytes = tokio::task::spawn_blocking(move || {
+        tokio::task::spawn_blocking(move || {
             let reader = Cursor::new(bytes);
-            let mut zip = zip::ZipArchive::new(reader).unwrap();
-            let mut file = zip.by_name("target/release/emunex-server").unwrap();
-            let mut buffer = Vec::new();
-            std::io::copy(&mut file, &mut buffer).unwrap();
-            buffer
+            let mut zip = zip::ZipArchive::new(reader).map_err(|e| e.to_string())?;
+            let mut binary_found = false;
+
+            for i in 0..zip.len() {
+                let mut file = zip.by_index(i).map_err(|e| e.to_string())?;
+                let name = file.name().to_string();
+
+                if name == "target/release/emunex-server" {
+                    let mut outfile =
+                        fs::File::create("./emunex-server.new").map_err(|e| e.to_string())?;
+                    std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
+                    binary_found = true;
+                } else if name.starts_with("server/templates/") {
+                    let rel_path = &name["server/templates/".len()..];
+                    if rel_path.is_empty() {
+                        continue;
+                    }
+
+                    let target_path = std::path::Path::new("./templates").join(rel_path);
+                    if name.ends_with('/') {
+                        fs::create_dir_all(&target_path).map_err(|e| e.to_string())?;
+                    } else {
+                        if let Some(p) = target_path.parent() {
+                            if !p.exists() {
+                                fs::create_dir_all(p).map_err(|e| e.to_string())?;
+                            }
+                        }
+                        let mut outfile =
+                            fs::File::create(&target_path).map_err(|e| e.to_string())?;
+                        std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
+                    }
+                }
+            }
+
+            if !binary_found {
+                return Err("Binary not found in artifact".into());
+            }
+
+            Ok::<(), String>(())
         })
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())??;
 
         let target = "./emunex-server";
         let temp_bin = "./emunex-server.new";
-
-        tokio::fs::write(temp_bin, &extracted_bytes)
-            .await
-            .map_err(|e| e.to_string())?;
 
         fs::remove_file(target).ok();
         fs::copy(temp_bin, target).map_err(|e| e.to_string())?;

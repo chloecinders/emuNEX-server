@@ -4,7 +4,7 @@ use s3::Bucket;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use tokio::{fs::File, io::AsyncReadExt};
 
-use crate::utils::{AutoOnceLock, Config};
+use crate::utils::{AutoOnceLock, Config, rate_limit::RateLimitFairing};
 
 mod routes;
 mod utils;
@@ -48,6 +48,7 @@ async fn rocket() -> _ {
 
     rocket::build()
         .attach(Template::fairing())
+        .attach(RateLimitFairing::new())
         .mount("/public", FileServer::from("./public"))
         .mount(
             "/",
@@ -79,6 +80,14 @@ async fn rocket() -> _ {
                 routes::api::v1::roms::get_categories,
                 routes::api::v1::roms::start_game,
                 routes::api::v1::roms::get_user_library,
+                routes::api::v1::roms::get_search_overview,
+                routes::api::v1::library::get_shelves,
+                routes::api::v1::library::create_shelf,
+                routes::api::v1::library::update_shelf,
+                routes::api::v1::library::delete_shelf,
+                routes::api::v1::library::add_rom_to_shelf,
+                routes::api::v1::library::remove_rom_from_shelf,
+                routes::api::v1::library::update_rom_order,
                 routes::api::v1::consoles::get_consoles,
                 routes::api::v1::consoles::upload_console,
                 routes::api::v1::consoles::update_console_metadata,
@@ -93,6 +102,13 @@ async fn rocket() -> _ {
                 routes::api::v1::saves::get_latest_save,
                 routes::api::v1::saves::download_save_file,
                 routes::api::v1::users::update_user,
+                routes::api::v1::users::get_invites,
+                routes::api::v1::users::create_invite,
+                routes::api::v1::users::delete_invite,
+                routes::api::v1::nointro::import_nointro,
+                routes::api::v1::nointro::get_nointro_dats,
+                routes::api::v1::nointro::update_dat_notes,
+                routes::api::v1::nointro::search_nointro,
                 routes::proxy::storage,
                 routes::proxy::storage_options,
             ],

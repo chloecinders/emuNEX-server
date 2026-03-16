@@ -6,6 +6,10 @@ use tracing::error;
 use crate::CONFIG;
 use crate::S3;
 
+pub fn compute_md5(bytes: &[u8]) -> String {
+    format!("{:x}", md5::compute(bytes))
+}
+
 pub fn create_bucket() -> Box<Bucket> {
     let region = Region::Custom {
         region: CONFIG.s3.region.clone().into(),

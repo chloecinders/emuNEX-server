@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT rom_path, image_path FROM roms WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "rom_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "image_path",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "cf8d7af8f32d0edaf00e596fa01b0b2a0d9a445029df406f079af32fa9964b7e"
+}

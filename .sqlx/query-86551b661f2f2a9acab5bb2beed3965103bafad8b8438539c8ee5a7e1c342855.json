@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO consoles (id, name, card_color)\n         VALUES ($1, $2, $3)\n         ON CONFLICT (name) DO UPDATE SET\n            card_color = EXCLUDED.card_color",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "86551b661f2f2a9acab5bb2beed3965103bafad8b8438539c8ee5a7e1c342855"
+}

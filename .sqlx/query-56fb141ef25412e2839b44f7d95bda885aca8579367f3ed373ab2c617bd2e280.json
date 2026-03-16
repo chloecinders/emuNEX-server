@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT name, card_color FROM consoles ORDER BY name ASC",
+  "query": "SELECT DISTINCT g.dat_name as name, d.notes \n         FROM nointro_games g\n         LEFT JOIN nointro_dats d ON g.dat_name = d.name\n         ORDER BY g.dat_name ASC",
   "describe": {
     "columns": [
       {
@@ -10,7 +10,7 @@
       },
       {
         "ordinal": 1,
-        "name": "card_color",
+        "name": "notes",
         "type_info": "Text"
       }
     ],
@@ -22,5 +22,5 @@
       true
     ]
   },
-  "hash": "50ed964b89d74ed9c88edbb998458c5166f11abb850ee13ba8dfb94f2ba53bd0"
+  "hash": "56fb141ef25412e2839b44f7d95bda885aca8579367f3ed373ab2c617bd2e280"
 }

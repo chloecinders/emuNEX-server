@@ -21,8 +21,8 @@ pub struct V1SaveUploadRequest {
 
 #[post("/api/v1/roms/<id>/save/<version_id>", data = "<data>")]
 pub async fn upload_save(
-    id: i32,
-    version_id: i32,
+    id: String,
+    version_id: i64,
     data: Json<V1SaveUploadRequest>,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<()> {
@@ -32,7 +32,7 @@ pub async fn upload_save(
             V1ApiError::BadRequest
         })?;
 
-        let save_path = format!("/saves/{}/{}/{}/{}", user.id, id, version_id, file_name);
+        let save_path = format!("/saves/{}/{}/{}/{}", user.id.value(), id, version_id, file_name);
 
         upload_object(&save_path, &buffer).await.map_err(|e| {
             error!(
@@ -42,10 +42,13 @@ pub async fn upload_save(
             V1ApiError::InternalError
         })?;
 
+        let save_id = crate::utils::snowflake::next_id();
+
         sqlx::query!(
-            "INSERT INTO user_save_files (user_id, rom_id, version_id, file_name, save_path)
-             VALUES ($1, $2, $3, $4, $5)",
-            user.id,
+            "INSERT INTO user_save_files (id, user_id, rom_id, version_id, file_name, save_path)
+             VALUES ($1, $2, $3, $4, $5, $6)",
+            save_id,
+            user.id.value(),
             id,
             version_id,
             file_name,
@@ -67,8 +70,8 @@ pub async fn upload_save(
 
 #[get("/api/v1/roms/<id>/save/<version_id>/<file_name>", rank = 1)]
 pub async fn download_save_file(
-    id: i32,
-    version_id: i32,
+    id: String,
+    version_id: i64,
     file_name: PathBuf,
     user: AuthenticatedUser,
 ) -> Result<Vec<u8>, V1ApiError> {
@@ -77,7 +80,7 @@ pub async fn download_save_file(
     let record = sqlx::query!(
         "SELECT save_path FROM user_save_files
          WHERE user_id = $1 AND rom_id = $2 AND version_id = $3 AND file_name = $4",
-        user.id,
+        user.id.value(),
         id,
         version_id,
         file_name_str
@@ -107,21 +110,21 @@ pub async fn download_save_file(
 #[derive(Serialize)]
 pub struct V1SaveFileMetadataResponse {
     pub file_name: String,
-    pub version_id: i32,
+    pub version_id: i64,
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 impl V1ApiResponseTrait for Vec<V1SaveFileMetadataResponse> {}
 
 #[get("/api/v1/roms/<id>/save/latest")]
 pub async fn get_latest_save(
-    id: i32,
+    id: String,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<Vec<V1SaveFileMetadataResponse>> {
     let latest_version = sqlx::query!(
         "SELECT version_id FROM user_save_files
          WHERE user_id = $1 AND rom_id = $2
          ORDER BY version_id DESC LIMIT 1",
-        user.id,
+        user.id.value(),
         id
     )
     .fetch_optional(&*SQL)
@@ -139,7 +142,7 @@ pub async fn get_latest_save(
         V1SaveFileMetadataResponse,
         "SELECT file_name, version_id, created_at FROM user_save_files
          WHERE user_id = $1 AND rom_id = $2 AND version_id = $3",
-        user.id,
+        user.id.value(),
         id,
         latest_version.version_id
     )

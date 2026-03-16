@@ -5,6 +5,8 @@ use rocket::{
     serde::json::Json,
 };
 
+use crate::utils::id::Id;
+
 pub struct V1ApiResponse<T>(pub T);
 
 pub trait V1ApiResponseTrait {
@@ -32,3 +34,4 @@ where
 impl V1ApiResponseTrait for i32 {}
 impl V1ApiResponseTrait for () {}
 impl V1ApiResponseTrait for String {}
+impl V1ApiResponseTrait for Id {}

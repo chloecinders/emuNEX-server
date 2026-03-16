@@ -16,4 +16,5 @@ pub struct Config {
     pub s3: S3Config,
     pub repository: Option<String>,
     pub github_token: Option<String>,
+    pub machine_id: u16,
 }

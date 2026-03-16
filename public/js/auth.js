@@ -14,9 +14,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const username = document.querySelector("#username").value;
         const password = document.querySelector("#password").value;
+        let invite_code = "";
 
         if (authType === "register") {
             const confirm = document.querySelector("#confirm").value;
+            invite_code = document.querySelector("#invite_code").value;
             if (password !== confirm) {
                 showError("Passwords do not match");
                 return;
@@ -30,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`/api/v1/${authType}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify({ username, password, invite_code }),
             });
 
             const json = await res.json();

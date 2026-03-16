@@ -1,12 +1,12 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, username, role AS \"role: UserRole\", created_at FROM users ORDER BY id ASC",
+  "query": "SELECT id AS \"id: Id\", username, role AS \"role: UserRole\", created_at FROM users ORDER BY id ASC",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
-        "type_info": "Int4"
+        "name": "id: Id",
+        "type_info": "Int8"
       },
       {
         "ordinal": 1,
@@ -22,8 +22,8 @@
             "kind": {
               "Enum": [
                 "admin",
-                "user",
-                "moderator"
+                "moderator",
+                "user"
               ]
             }
           }
@@ -45,5 +45,5 @@
       true
     ]
   },
-  "hash": "a02dba99d1b434a3c789ff56aa5b5b987f95b6900b8670268d2d538dc0c973b3"
+  "hash": "36b5850daf88ad781bf9fa35c0374aa2c9360563d23a78945151a6b0793f9507"
 }

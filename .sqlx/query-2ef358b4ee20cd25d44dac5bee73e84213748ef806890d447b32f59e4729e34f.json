@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO shelf_roms (shelf_id, rom_id, sort_order)\n         VALUES ($1, $2, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM shelf_roms WHERE shelf_id = $1))\n         ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2ef358b4ee20cd25d44dac5bee73e84213748ef806890d447b32f59e4729e34f"
+}

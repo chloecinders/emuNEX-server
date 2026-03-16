@@ -1,7 +1,7 @@
 # emuNEX (server)
 Remote Emulation & Library Management.
 
-emuNEX is a service, think of it like Steam, but for emulators. This server will get client connections to download emulators and games. In the future it could handle features such as saving game save files or profiles/friends.
+emuNEX is a service, think of it like Steam, but for emulators. This server will get client connections to download emulators and games. In the future it could handle features such as profiles/friends.
 
 Find the source code for the client here: https://github.com/chloecinders/emuNEX-client
 
@@ -30,6 +30,7 @@ server_domain = "http://localhost:8000" # Reachable domain of your server. Used 
 database_url = "postgres://user:password@host:port/database" # PostgresSQL Database url
 repository = "chloecinders/emunex-server" # GitHub repository to pull updates from. Will always pull the most recent artifact binary.
 github_token = "" # Used to pull the update from the above repository.
+machine_id = 0 # Used for id generation
 
 # S3 configuration, self explanatory.
 [s3]

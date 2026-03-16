@@ -1,11 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
 
 :root {
     --color-primary: #e66b1d;
     --color-primary-light: #ff8c42;
     --color-primary-dark: #c45612;
     --color-secondary: #fce4d6;
-    --color-accent: #6B5CB1;
+    --color-accent: #6b5cb1;
     --color-background: #f0f0f0;
     --color-surface: #ffffff;
     --color-surface-variant: #f8f8fc;
@@ -40,7 +40,7 @@
 body {
     margin: 0;
     padding: 0;
-    font-family: 'Inter', sans-serif;
+    font-family: "Inter", sans-serif;
     color: var(--color-text);
     background-color: var(--color-background);
     background-image: radial-gradient(#dcdcdc var(--spacing-xxs), transparent var(--spacing-xxs));
@@ -102,7 +102,9 @@ body {
     text-transform: uppercase;
     letter-spacing: 1px;
     z-index: 100;
-    transition: color 0.2s, transform 0.2s;
+    transition:
+        color 0.2s,
+        transform 0.2s;
 }
 
 .back-link:hover {
@@ -130,7 +132,8 @@ body {
     gap: var(--spacing-md);
 }
 
-.upload-zone:hover, .upload-zone.dragover {
+.upload-zone:hover,
+.upload-zone.dragover {
     border-color: var(--color-primary);
     background: var(--color-surface);
 }
@@ -297,7 +300,9 @@ label {
     margin-bottom: var(--spacing-xs);
 }
 
-input, select, textarea {
+input,
+select,
+textarea {
     background: var(--color-surface);
     border: 2px solid var(--color-border);
     border-radius: var(--radius-md);
@@ -309,12 +314,13 @@ input, select, textarea {
     width: 100%;
 }
 
-input:focus, select:focus {
+input:focus,
+select:focus {
     outline: none;
     border-color: var(--color-primary);
 }
 
-.nintendo-btn {
+.popout-btn {
     position: relative;
     border: none;
     background: transparent;
@@ -330,7 +336,7 @@ input:focus, select:focus {
     display: inline-block;
 }
 
-.nintendo-btn.btn-fit {
+.popout-btn.btn-fit {
     width: auto;
 }
 
@@ -357,31 +363,31 @@ input:focus, select:focus {
     background: var(--btn-color-dark, var(--color-primary-dark));
 }
 
-.nintendo-btn.btn-error {
+.popout-btn.btn-error {
     --btn-color-primary: var(--color-error);
     --btn-color-dark: #cc0000;
 }
 
-.nintendo-btn.btn-info {
+.popout-btn.btn-info {
     --btn-color-primary: var(--color-primary);
     --btn-color-dark: var(--color-primary-dark);
 }
 
-.auth-card .nintendo-btn.btn-info {
+.auth-card .popout-btn.btn-info {
     --btn-color-primary: #3182ce;
     --btn-color-dark: #2c5282;
 }
 
-.nintendo-btn:hover:not(:disabled) .btn-front {
+.popout-btn:hover:not(:disabled) .btn-front {
     transform: translateY(-6px);
     filter: brightness(110%);
 }
 
-.nintendo-btn:active:not(:disabled) .btn-front {
+.popout-btn:active:not(:disabled) .btn-front {
     transform: translateY(-1px);
 }
 
-.nintendo-btn:disabled {
+.popout-btn:disabled {
     cursor: not-allowed;
     opacity: 0.6;
 }
@@ -436,7 +442,6 @@ td {
     display: block;
 }
 
-/* Color Picker Styling */
 input[type="color"] {
     appearance: none;
     -webkit-appearance: none;

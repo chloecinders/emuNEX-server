@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO library_shelves (id, user_id, name, sort_order)\n         VALUES ($1, $2, $3, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM library_shelves WHERE user_id = $2))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "daae70cfd159bb55bbf12db2f1ea5f60ba770803b8729fedba9205d6b22ed8b3"
+}

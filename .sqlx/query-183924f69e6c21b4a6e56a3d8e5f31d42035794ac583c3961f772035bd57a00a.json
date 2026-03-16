@@ -1,12 +1,12 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, title, image_path, console FROM roms\n         WHERE title ILIKE $1\n         ORDER BY title ASC\n         LIMIT $2 OFFSET $3",
+  "query": "SELECT id, title, image_path, console FROM roms\n                 WHERE category = $1\n                 ORDER BY title ASC\n                 LIMIT 10",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
         "name": "id",
-        "type_info": "Int4"
+        "type_info": "Text"
       },
       {
         "ordinal": 1,
@@ -26,9 +26,7 @@
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Int8",
-        "Int8"
+        "Text"
       ]
     },
     "nullable": [
@@ -38,5 +36,5 @@
       false
     ]
   },
-  "hash": "5484821dbaaa5d76557b03cc9e97f0f2c0e01903c1484f17e7f9c5f2f90da60b"
+  "hash": "183924f69e6c21b4a6e56a3d8e5f31d42035794ac583c3961f772035bd57a00a"
 }

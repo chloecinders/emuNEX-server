@@ -13,10 +13,12 @@ use crate::{
         api_response::V1ApiResponseTrait,
         v1::guards::{AuthenticatedUser, UserRole},
     },
+    utils::{id::Id, snowflake::next_id},
 };
 
 #[derive(Serialize, sqlx::FromRow)]
 pub struct V1ConsoleResponse {
+    pub id: Id,
     pub name: String,
     pub card_color: Option<String>,
 }
@@ -26,7 +28,7 @@ impl V1ApiResponseTrait for Vec<V1ConsoleResponse> {}
 pub async fn get_consoles(_user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1ConsoleResponse>> {
     let consoles = sqlx::query_as!(
         V1ConsoleResponse,
-        "SELECT name, card_color FROM consoles ORDER BY name ASC"
+        "SELECT id, name, card_color FROM consoles ORDER BY name ASC"
     )
     .fetch_all(&*SQL)
     .await
@@ -48,25 +50,27 @@ pub struct V1ConsoleInsert {
 pub async fn upload_console(
     data: Form<V1ConsoleInsert>,
     user: AuthenticatedUser,
-) -> V1ApiResponseType<i32> {
+) -> V1ApiResponseType<Id> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
         return Err(V1ApiError::NotAuthorized);
     }
 
-    let rec = sqlx::query!(
-        "INSERT INTO consoles (name, card_color)
-         VALUES ($1, $2)
+    let id = next_id();
+
+    sqlx::query!(
+        "INSERT INTO consoles (id, name, card_color)
+         VALUES ($1, $2, $3)
          ON CONFLICT (name) DO UPDATE SET
-            card_color = EXCLUDED.card_color
-         RETURNING id",
+            card_color = EXCLUDED.card_color",
+        id,
         data.name,
         data.card_color
     )
-    .fetch_one(&*SQL)
+    .execute(&*SQL)
     .await
     .map_err(|_| V1ApiError::InternalError)?;
 
-    Ok(V1ApiResponse(rec.id))
+    Ok(V1ApiResponse(Id::new(id)))
 }
 
 #[derive(serde::Deserialize)]

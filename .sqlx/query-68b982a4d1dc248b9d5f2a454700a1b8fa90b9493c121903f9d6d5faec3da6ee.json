@@ -1,12 +1,12 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM roms WHERE id = $1",
+  "query": "SELECT id, title, console, region, category, serial, rom_path, image_path, file_extension, file_size_bytes, md5_hash, release_year, created_at FROM roms WHERE id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
         "name": "id",
-        "type_info": "Int4"
+        "type_info": "Text"
       },
       {
         "ordinal": 1,
@@ -30,58 +30,48 @@
       },
       {
         "ordinal": 5,
-        "name": "rom_path",
+        "name": "serial",
         "type_info": "Text"
       },
       {
         "ordinal": 6,
-        "name": "image_path",
+        "name": "rom_path",
         "type_info": "Text"
       },
       {
         "ordinal": 7,
+        "name": "image_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
         "name": "file_extension",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "file_size_bytes",
         "type_info": "Int8"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "md5_hash",
         "type_info": "Bpchar"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "release_year",
         "type_info": "Int4"
       },
       {
-        "ordinal": 11,
-        "name": "is_favorite",
-        "type_info": "Bool"
-      },
-      {
         "ordinal": 12,
-        "name": "play_count",
-        "type_info": "Int4"
-      },
-      {
-        "ordinal": 13,
-        "name": "last_played",
-        "type_info": "Timestamptz"
-      },
-      {
-        "ordinal": 14,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Int4"
+        "Text"
       ]
     },
     "nullable": [
@@ -90,11 +80,9 @@
       false,
       true,
       false,
+      true,
       false,
       false,
-      true,
-      true,
-      true,
       true,
       true,
       true,
@@ -102,5 +90,5 @@
       true
     ]
   },
-  "hash": "c47c5e85c0140223dcfc7949fb9ca745df65bf947b2768b052446704409b7633"
+  "hash": "68b982a4d1dc248b9d5f2a454700a1b8fa90b9493c121903f9d6d5faec3da6ee"
 }

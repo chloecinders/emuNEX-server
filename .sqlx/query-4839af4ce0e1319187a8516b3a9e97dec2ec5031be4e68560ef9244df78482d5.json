@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO nointro_dats (name, notes) VALUES ($1, $2)\n         ON CONFLICT (name) DO UPDATE SET notes = EXCLUDED.notes",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4839af4ce0e1319187a8516b3a9e97dec2ec5031be4e68560ef9244df78482d5"
+}

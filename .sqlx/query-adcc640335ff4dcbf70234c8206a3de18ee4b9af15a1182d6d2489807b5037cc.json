@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE emulators SET name = $1, console = $2, platform = $3, run_command = $4, save_path = $5, config_files = $6, zipped = $7 WHERE id = $8",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Text",
+        "Text",
+        "TextArray",
+        "Bool",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "adcc640335ff4dcbf70234c8206a3de18ee4b9af15a1182d6d2489807b5037cc"
+}

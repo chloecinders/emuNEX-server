@@ -61,7 +61,7 @@
                             </div>
                         </div>
 
-                        <button type="submit" id="submitBtn" class="nintendo-btn" style="margin-top: var(--spacing-lg)">
+                        <button type="submit" id="submitBtn" class="popout-btn" style="margin-top: var(--spacing-lg)">
                             <span class="btn-edge"></span>
                             <span class="btn-front">Save Console</span>
                         </button>

@@ -11,7 +11,6 @@
             <div class="auth-card">
                 <header class="card-header">
                     <h1>emuNEX</h1>
-                    <p class="tagline">Developer & Moderator Portal</p>
                 </header>
 
                 <div class="content">
@@ -27,9 +26,11 @@
                         <a href="/consoles" class="nav-btn">
                             <span>Manage Consoles</span>
                         </a>
+                        {% if role == "Admin" %}
                         <a href="/users" class="nav-btn">
                             <span>Manage Users</span>
                         </a>
+                        {% endif %}
                     </div>
 
                     {% if role == "Admin" %}
@@ -39,7 +40,7 @@
                             Connected as: <strong>{{ role }}</strong>
                         </p>
 
-                        <button id="updateBtn" class="nintendo-btn" onclick="triggerUpdate()">
+                        <button id="updateBtn" class="popout-btn" onclick="triggerUpdate()">
                             <span class="btn-edge"></span>
                             <span class="btn-front">Pull Update & Restart</span>
                         </button>
