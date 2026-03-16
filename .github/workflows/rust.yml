@@ -43,3 +43,4 @@ jobs:
                       target/release/emunex-server
                       target/release/emunex-server.exe
                       templates/
+                      public/

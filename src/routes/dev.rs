@@ -94,13 +94,14 @@ pub async fn update_server(user: AuthenticatedUser) -> Result<Status, String> {
                         fs::File::create("./emunex-server.new").map_err(|e| e.to_string())?;
                     std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
                     binary_found = true;
-                } else if name.starts_with("server/templates/") {
-                    let rel_path = &name["server/templates/".len()..];
+                } else if name.starts_with("templates") {
+                    let rel_path = &name["templates".len()..];
                     if rel_path.is_empty() {
                         continue;
                     }
 
                     let target_path = std::path::Path::new("./templates").join(rel_path);
+
                     if name.ends_with('/') {
                         fs::create_dir_all(&target_path).map_err(|e| e.to_string())?;
                     } else {
@@ -109,8 +110,32 @@ pub async fn update_server(user: AuthenticatedUser) -> Result<Status, String> {
                                 fs::create_dir_all(p).map_err(|e| e.to_string())?;
                             }
                         }
+
                         let mut outfile =
                             fs::File::create(&target_path).map_err(|e| e.to_string())?;
+
+                        std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
+                    }
+                } else if name.starts_with("public") {
+                    let rel_path = &name["public".len()..];
+                    if rel_path.is_empty() {
+                        continue;
+                    }
+
+                    let target_path = std::path::Path::new("./public").join(rel_path);
+
+                    if name.ends_with('/') {
+                        fs::create_dir_all(&target_path).map_err(|e| e.to_string())?;
+                    } else {
+                        if let Some(p) = target_path.parent() {
+                            if !p.exists() {
+                                fs::create_dir_all(p).map_err(|e| e.to_string())?;
+                            }
+                        }
+
+                        let mut outfile =
+                            fs::File::create(&target_path).map_err(|e| e.to_string())?;
+
                         std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
                     }
                 }
