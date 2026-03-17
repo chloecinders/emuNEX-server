@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, title, image_path, console FROM roms\n                 WHERE category = $1\n                 ORDER BY title ASC\n                 LIMIT 10",
+  "query": "SELECT id, title, image_path, console FROM roms\n                 WHERE category = $1\n                 ORDER BY title ASC\n                 LIMIT 50",
   "describe": {
     "columns": [
       {
@@ -36,5 +36,5 @@
       false
     ]
   },
-  "hash": "183924f69e6c21b4a6e56a3d8e5f31d42035794ac583c3961f772035bd57a00a"
+  "hash": "a78e9dd7350ebd1bc9a18c0fb928cc75013cea34d39e163bd5f400d746fdd0f8"
 }

@@ -74,9 +74,15 @@ pub async fn get_search_overview(
 
     let most_played = sqlx::query_as!(
         V1RomListResponse,
-        "SELECT id, title, image_path, console FROM roms
-         ORDER BY created_at DESC NULLS LAST
-         LIMIT 10"
+        r#"SELECT r.id, r.title, r.image_path, r.console
+         FROM roms r
+         LEFT JOIN (
+             SELECT rom_id, SUM(play_count) as total_play_count
+             FROM user_roms
+             GROUP BY rom_id
+         ) ur ON r.id = ur.rom_id
+         ORDER BY COALESCE(ur.total_play_count, 0) DESC, r.title ASC
+         LIMIT 50"#
     )
     .fetch_all(&*SQL)
     .await
@@ -92,7 +98,7 @@ pub async fn get_search_overview(
         V1RomListResponse,
         "SELECT id, title, image_path, console FROM roms
          ORDER BY created_at DESC NULLS LAST
-         LIMIT 10"
+         LIMIT 50"
     )
     .fetch_all(&*SQL)
     .await
@@ -121,7 +127,7 @@ pub async fn get_search_overview(
             r#"SELECT id, title, image_path, console FROM roms
                  WHERE category = $1
                  ORDER BY title ASC
-                 LIMIT 10"#,
+                 LIMIT 50"#,
             category
         )
         .fetch_all(&*SQL)
