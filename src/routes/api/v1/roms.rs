@@ -596,6 +596,7 @@ pub struct V1UserLibraryResponse {
     pub title: String,
     pub image_path: String,
     pub console: String,
+    pub region: Option<String>,
     pub play_count: i32,
     pub last_played: Option<chrono::DateTime<chrono::Utc>>,
 }
@@ -606,7 +607,7 @@ pub async fn get_user_library(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<Vec<V1UserLibraryResponse>> {
     let rows = sqlx::query!(
-        r#"SELECT ur.id as "ur_id!", ur.rom_id, r.title, r.image_path, r.console, ur.play_count, ur.last_played
+        r#"SELECT ur.id as "ur_id!", ur.rom_id, r.title, r.image_path, r.console, ur.play_count, ur.last_played, r.region
          FROM user_roms ur
          INNER JOIN roms r ON ur.rom_id = r.id
          WHERE ur.user_id = $1
@@ -624,6 +625,7 @@ pub async fn get_user_library(
         .into_iter()
         .map(|r| V1UserLibraryResponse {
             id: r.rom_id.clone(),
+            region: r.region,
             rom_id: r.rom_id,
             title: r.title,
             image_path: r.image_path,

@@ -47,6 +47,11 @@
                         </div>
 
                         <div class="form-group">
+                            <label for="binary_name">Binary Name (e.g. snes9x-x64.exe)</label>
+                            <input type="text" id="binary_name" name="binary_name" placeholder="snes9x.exe" />
+                        </div>
+
+                        <div class="form-group">
                             <label for="save_path">Save Path (optional)</label>
                             <input type="text" id="save_path" name="save_path" placeholder="/saves/$rom_name.sav" />
                         </div>

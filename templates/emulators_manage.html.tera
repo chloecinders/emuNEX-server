@@ -116,6 +116,11 @@
                         </div>
 
                         <div class="form-group">
+                            <label>Binary Name (e.g. dolphin.exe, mGBA)</label>
+                            <input type="text" id="edit-binary-name" placeholder="emulator.exe" />
+                        </div>
+
+                        <div class="form-group">
                             <label>Save Path (optional)</label>
                             <input type="text" id="edit-save-path" placeholder="/saves/$rom_name.sav" />
                         </div>
@@ -260,6 +265,7 @@
                 document.getElementById("edit-console").value = emu.console;
                 document.getElementById("edit-platform").value = emu.platform;
                 document.getElementById("edit-command").value = emu.run_command;
+                document.getElementById("edit-binary-name").value = emu.binary_name || "";
                 document.getElementById("edit-save-path").value = emu.save_path || "";
                 document.getElementById("edit-zipped").checked = emu.zipped;
                 document.getElementById("edit-binary").value = "";
@@ -319,6 +325,7 @@
                     console: document.getElementById("edit-console").value,
                     platform: document.getElementById("edit-platform").value,
                     run_command: document.getElementById("edit-command").value,
+                    binary_name: document.getElementById("edit-binary-name").value,
                     save_path: document.getElementById("edit-save-path").value,
                     config_files: currentTags,
                     zipped: document.getElementById("edit-zipped").checked,

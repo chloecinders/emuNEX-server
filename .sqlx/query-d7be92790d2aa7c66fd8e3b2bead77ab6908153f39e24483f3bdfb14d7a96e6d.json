@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT ur.id as \"ur_id!\", ur.rom_id, r.title, r.image_path, r.console, ur.play_count, ur.last_played\n         FROM user_roms ur\n         INNER JOIN roms r ON ur.rom_id = r.id\n         WHERE ur.user_id = $1\n         ORDER BY ur.last_played DESC NULLS LAST",
+  "query": "SELECT ur.id as \"ur_id!\", ur.rom_id, r.title, r.image_path, r.console, ur.play_count, ur.last_played, r.region\n         FROM user_roms ur\n         INNER JOIN roms r ON ur.rom_id = r.id\n         WHERE ur.user_id = $1\n         ORDER BY ur.last_played DESC NULLS LAST",
   "describe": {
     "columns": [
       {
@@ -37,6 +37,11 @@
         "ordinal": 6,
         "name": "last_played",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "region",
+        "type_info": "Varchar"
       }
     ],
     "parameters": {
@@ -51,8 +56,9 @@
       false,
       false,
       false,
+      true,
       true
     ]
   },
-  "hash": "132eee925bee7131909d6c8de1e49cc3c316455f64174247623d7937efcf92a8"
+  "hash": "d7be92790d2aa7c66fd8e3b2bead77ab6908153f39e24483f3bdfb14d7a96e6d"
 }
