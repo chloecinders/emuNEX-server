@@ -96,7 +96,9 @@
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md)">
                             <div class="form-group">
                                 <label>Console</label>
-                                <input type="text" id="edit-console" required />
+                                <select id="edit-console" required>
+                                    <option value="">select console</option>
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label>Target Platform</label>
@@ -383,6 +385,23 @@
                 setTimeout(() => (sb.style.display = "none"), 3000);
             }
 
+            async function loadConsoles() {
+                try {
+                    const res = await fetch("/api/v1/consoles", { headers: { Authorization: token } });
+                    const json = await res.json();
+                    const picker = document.getElementById("edit-console");
+                    (json.data || []).forEach((c) => {
+                        const opt = document.createElement("option");
+                        opt.value = c.name;
+                        opt.textContent = c.name.toUpperCase();
+                        picker.appendChild(opt);
+                    });
+                } catch (e) {
+                    console.error("Failed to load consoles", e);
+                }
+            }
+
+            loadConsoles();
             fetchEmulators();
         </script>
     </body>

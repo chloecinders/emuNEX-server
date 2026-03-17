@@ -150,14 +150,17 @@ pub async fn update_server(user: AuthenticatedUser) -> Result<Status, String> {
         .await
         .map_err(|e| e.to_string())??;
 
-        let target = "./emunex-server";
-        let temp_bin = "./emunex-server.new";
+        let target = std::env::current_exe().map_err(|e| e.to_string())?;
+        let temp_bin = std::path::Path::new("./emunex-server.new");
 
-        fs::remove_file(target).ok();
-        fs::copy(temp_bin, target).map_err(|e| e.to_string())?;
         #[cfg(not(target_os = "windows"))]
-        fs::set_permissions(target, Permissions::from_mode(0o755)).map_err(|e| e.to_string())?;
-        fs::remove_file(temp_bin).ok();
+        {
+            use std::fs::Permissions;
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(temp_bin, Permissions::from_mode(0o755)).map_err(|e| e.to_string())?;
+        }
+
+        fs::rename(temp_bin, target).map_err(|e| e.to_string())?;
 
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_millis(250)).await;

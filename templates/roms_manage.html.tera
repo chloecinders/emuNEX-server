@@ -96,7 +96,9 @@
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md)">
                             <div class="form-group">
                                 <label>Console</label>
-                                <input type="text" id="edit-console" required />
+                                <select id="edit-console" required>
+                                    <option value="">select console</option>
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label>Category</label>
@@ -113,6 +115,11 @@
                                 <label>Release Year</label>
                                 <input type="number" id="edit-year" placeholder="1996" />
                             </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Serial</label>
+                            <input type="text" id="edit-serial" placeholder="SLUS-01234" />
                         </div>
 
                         <div class="form-group">
@@ -208,11 +215,11 @@
                         <td style="font-weight: 700;">${rom.title}</td>
                         <td style="font-weight: 800;">${rom.console}</td>
                         <td style="display: flex; gap: var(--spacing-xs);">
-                            <button class="popout-btn btn-fit btn-info" onclick="openEdit(${rom.id})" style="margin: 0;">
+                            <button class="popout-btn btn-fit btn-info" onclick="openEdit('${rom.id}')" style="margin: 0;">
                                 <span class="btn-edge" style="border-radius: var(--radius-sm);"></span>
                                 <span class="btn-front" style="padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.75rem; min-width: 60px;">Edit</span>
                             </button>
-                            <button class="popout-btn btn-fit btn-error" onclick="deleteRom(${rom.id}, this)" style="margin: 0;">
+                            <button class="popout-btn btn-fit btn-error" onclick="deleteRom('${rom.id}', this)" style="margin: 0;">
                                 <span class="btn-edge" style="border-radius: var(--radius-sm);"></span>
                                 <span class="btn-front" style="padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.75rem; min-width: 60px;">Delete</span>
                             </button>
@@ -239,6 +246,7 @@
                 document.getElementById("edit-category").value = rom.category || "";
                 document.getElementById("edit-region").value = rom.region || "";
                 document.getElementById("edit-year").value = rom.release_year || "";
+                document.getElementById("edit-serial").value = rom.serial || "";
 
                 document.getElementById("edit-file").value = "";
                 document.getElementById("edit-image").value = "";
@@ -293,6 +301,7 @@
                     category: document.getElementById("edit-category").value,
                     region: document.getElementById("edit-region").value || null,
                     release_year: parseInt(document.getElementById("edit-year").value) || null,
+                    serial: document.getElementById("edit-serial").value || null,
                 };
 
                 try {
@@ -369,6 +378,23 @@
                 setTimeout(() => (sb.style.display = "none"), 3000);
             }
 
+            async function loadConsoles() {
+                try {
+                    const res = await fetch("/api/v1/consoles", { headers: { Authorization: token } });
+                    const json = await res.json();
+                    const picker = document.getElementById("edit-console");
+                    (json.data || []).forEach((c) => {
+                        const opt = document.createElement("option");
+                        opt.value = c.name;
+                        opt.textContent = c.name.toUpperCase();
+                        picker.appendChild(opt);
+                    });
+                } catch (e) {
+                    console.error("Failed to load consoles", e);
+                }
+            }
+
+            loadConsoles();
             fetchRoms();
         </script>
     </body>

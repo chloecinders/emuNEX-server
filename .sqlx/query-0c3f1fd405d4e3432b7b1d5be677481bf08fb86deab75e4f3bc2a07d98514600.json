@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id,\n            name,\n            console,\n            platform,\n            run_command,\n            binary_path,\n            save_path,\n            md5_hash,\n            config_files as \"config_files!\",\n            zipped as \"zipped!\",\n            file_size as \"file_size!\",\n            created_at\n        FROM emulators\n        ORDER BY console ASC, name ASC\n        ",
+  "query": "\n        SELECT\n            id,\n            name,\n            console,\n            platform,\n            run_command,\n            binary_path,\n            binary_name,\n            save_path,\n            md5_hash,\n            config_files as \"config_files!\",\n            zipped as \"zipped!\",\n            file_size as \"file_size!\",\n            created_at\n        FROM emulators\n        WHERE LOWER(console) = LOWER($1) AND platform = $2\n        ORDER BY name ASC\n        ",
   "describe": {
     "columns": [
       {
@@ -35,37 +35,45 @@
       },
       {
         "ordinal": 6,
-        "name": "save_path",
+        "name": "binary_name",
         "type_info": "Text"
       },
       {
         "ordinal": 7,
+        "name": "save_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
         "name": "md5_hash",
         "type_info": "Bpchar"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "config_files!",
         "type_info": "TextArray"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "zipped!",
         "type_info": "Bool"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "file_size!",
         "type_info": "Int8"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Text",
+        "Text"
+      ]
     },
     "nullable": [
       false,
@@ -76,11 +84,12 @@
       false,
       true,
       true,
+      true,
       false,
       false,
       false,
       true
     ]
   },
-  "hash": "06cc74be502120fdba4a6bf669ad9c0bffca00f2645d68c17c777591134082ad"
+  "hash": "0c3f1fd405d4e3432b7b1d5be677481bf08fb86deab75e4f3bc2a07d98514600"
 }

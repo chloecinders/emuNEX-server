@@ -26,6 +26,10 @@ pub struct V1RomListResponse {
     pub title: String,
     pub image_path: String,
     pub console: String,
+    pub category: Option<String>,
+    pub region: Option<String>,
+    pub release_year: Option<i32>,
+    pub serial: Option<String>,
 }
 impl V1ApiResponseTrait for Vec<V1RomListResponse> {}
 
@@ -42,7 +46,7 @@ pub async fn get_rom_list(
 
     let roms = sqlx::query_as!(
         V1RomListResponse,
-        "SELECT id, title, image_path, console FROM roms
+        "SELECT id, title, image_path, console, category, region, release_year, serial FROM roms
          WHERE (category = $1 OR $1 IS NULL)
          AND (console = $2 OR $2 IS NULL)
          ORDER BY title ASC
@@ -74,7 +78,7 @@ pub async fn get_search_overview(
 
     let most_played = sqlx::query_as!(
         V1RomListResponse,
-        r#"SELECT r.id, r.title, r.image_path, r.console
+        r#"SELECT r.id, r.title, r.image_path, r.console, r.category, r.region, r.release_year, r.serial
          FROM roms r
          LEFT JOIN (
              SELECT rom_id, SUM(play_count) as total_play_count
@@ -96,7 +100,7 @@ pub async fn get_search_overview(
 
     let recently_added = sqlx::query_as!(
         V1RomListResponse,
-        "SELECT id, title, image_path, console FROM roms
+        "SELECT id, title, image_path, console, category, region, release_year, serial FROM roms
          ORDER BY created_at DESC NULLS LAST
          LIMIT 50"
     )
@@ -124,7 +128,7 @@ pub async fn get_search_overview(
         let category = record.category;
         let cat_roms = sqlx::query_as!(
             V1RomListResponse,
-            r#"SELECT id, title, image_path, console FROM roms
+            r#"SELECT id, title, image_path, console, category, region, release_year, serial FROM roms
                  WHERE category = $1
                  ORDER BY title ASC
                  LIMIT 50"#,
@@ -194,7 +198,7 @@ pub async fn search_roms(
 
     let results = sqlx::query_as!(
         V1RomListResponse,
-        r#"SELECT id, title, image_path, console FROM roms
+        r#"SELECT id, title, image_path, console, category, region, release_year, serial FROM roms
          WHERE (
              title ILIKE '%' || $1 || '%'
              OR serial ILIKE $1 || '%'

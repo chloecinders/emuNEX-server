@@ -109,7 +109,9 @@
                             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--spacing-md)">
                                 <div class="form-group">
                                     <label for="console">Console</label>
-                                    <input type="text" id="console" name="console" placeholder="GBA" required />
+                                    <select id="console" name="console" required>
+                                        <option value="">select console</option>
+                                    </select>
                                 </div>
                                 <div class="form-group">
                                     <label for="category">Category</label>
@@ -402,6 +404,10 @@
                 document.getElementById("serial").value = game.serial || "";
                 document.getElementById("md5_hash").value = game.md5 || "";
 
+                if (currentDat) {
+                    document.getElementById("console").value = currentDat;
+                }
+
                 const statusBox = document.getElementById("statusBox");
                 statusBox.innerText = `Matched with No-Intro: ${game.name || "Unknown"}`;
                 statusBox.className = "status-box status-success";
@@ -528,7 +534,24 @@
                 }
             });
 
+            async function loadConsoles() {
+                try {
+                    const res = await fetch("/api/v1/consoles", { headers: { Authorization: token } });
+                    const json = await res.json();
+                    const picker = document.getElementById("console");
+                    (json.data || []).forEach((c) => {
+                        const opt = document.createElement("option");
+                        opt.value = c.name;
+                        opt.textContent = c.name.toUpperCase();
+                        picker.appendChild(opt);
+                    });
+                } catch (e) {
+                    console.error("Failed to load consoles", e);
+                }
+            }
+
             loadDats();
+            loadConsoles();
         </script>
     </body>
 </html>

@@ -36,7 +36,7 @@ pub async fn get_shelves(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1She
     for shelf in shelves_records {
         let games = sqlx::query_as!(
             V1RomListResponse,
-            "SELECT r.id, r.title, r.image_path, r.console
+            "SELECT r.id, r.title, r.image_path, r.console, r.category, r.release_year, r.region, r.serial
              FROM roms r
              JOIN shelf_roms sr ON r.id = sr.rom_id
              WHERE sr.shelf_id = $1

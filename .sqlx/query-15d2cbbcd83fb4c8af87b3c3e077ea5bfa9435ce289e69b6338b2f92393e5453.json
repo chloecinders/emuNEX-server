@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.id, r.title, r.image_path, r.console, r.category, r.release_year, r.region, r.serial\n             FROM roms r\n             JOIN shelf_roms sr ON r.id = sr.rom_id\n             WHERE sr.shelf_id = $1\n             ORDER BY sr.sort_order ASC, r.title ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "image_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "console",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "category",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "release_year",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "region",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "serial",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "15d2cbbcd83fb4c8af87b3c3e077ea5bfa9435ce289e69b6338b2f92393e5453"
+}

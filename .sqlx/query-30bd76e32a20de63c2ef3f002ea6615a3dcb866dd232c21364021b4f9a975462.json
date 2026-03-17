@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.id, r.title, r.image_path, r.console, r.category, r.region, r.release_year, r.serial\n         FROM roms r\n         LEFT JOIN (\n             SELECT rom_id, SUM(play_count) as total_play_count\n             FROM user_roms\n             GROUP BY rom_id\n         ) ur ON r.id = ur.rom_id\n         ORDER BY COALESCE(ur.total_play_count, 0) DESC, r.title ASC\n         LIMIT 50",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "image_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "console",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "category",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "region",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "release_year",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "serial",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "30bd76e32a20de63c2ef3f002ea6615a3dcb866dd232c21364021b4f9a975462"
+}
