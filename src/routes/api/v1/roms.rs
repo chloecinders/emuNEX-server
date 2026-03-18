@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{io::Read, path::Path};
 
 use rocket::{
     delete,
@@ -8,7 +8,7 @@ use rocket::{
     serde::json::Json,
 };
 use serde::Serialize;
-use tracing::error;
+use tracing::{error, info};
 
 use crate::{
     SQL,
@@ -17,7 +17,7 @@ use crate::{
         api_response::V1ApiResponseTrait,
         v1::guards::{AuthenticatedUser, UserRole},
     },
-    utils::s3::{compute_md5, upload_object},
+    utils::s3::{compute_md5, delete_object, upload_object},
 };
 
 #[derive(serde::Serialize, sqlx::FromRow)]
@@ -664,7 +664,11 @@ struct BulkInfoJson {
     languages: Option<String>,
 }
 
-#[post("/api/v1/roms/bulk_upload", format = "multipart/form-data", data = "<data>")]
+#[post(
+    "/api/v1/roms/bulk_upload",
+    format = "multipart/form-data",
+    data = "<data>"
+)]
 pub async fn bulk_upload_roms(
     mut data: Form<V1BulkUpload<'_>>,
     user: AuthenticatedUser,
@@ -673,164 +677,155 @@ pub async fn bulk_upload_roms(
         return Err(V1ApiError::NotAuthorized);
     }
 
-    let temp_dir = std::env::temp_dir();
-    let temp_path = temp_dir.join(format!("upload_{}.zip", crate::utils::snowflake::next_id()));
+    let temp_path =
+        std::env::temp_dir().join(format!("upload_{}.zip", crate::utils::snowflake::next_id()));
+    info!("Starting bulk upload. Persisting zip to {:?}", temp_path);
 
     data.zip_file.persist_to(&temp_path).await.map_err(|e| {
-        error!("Failed to persist zip file: {:?}", e);
+        error!("Failed to persist zip: {:?}", e);
         V1ApiError::InternalError
     })?;
 
-    let user_id = user.id.value();
+    let entries = tokio::task::spawn_blocking({
+        let tp = temp_path.clone();
+        move || -> Result<Vec<(BulkInfoJson, Vec<u8>, Vec<u8>)>, String> {
+            let file = std::fs::File::open(&tp).map_err(|e| e.to_string())?;
+            let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
+            let mut results = Vec::new();
 
-    let result = tokio::task::spawn_blocking(move || {
-        let file = std::fs::File::open(&temp_path).map_err(|e| format!("Failed to open temp zip: {}", e))?;
-        let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Failed to read zip archive: {}", e))?;
-
-        let mut info_paths = Vec::new();
-
-        for i in 0..archive.len() {
-            let file = archive.by_index(i).unwrap();
-            if file.name().ends_with("info.json") {
-                info_paths.push(file.name().to_string());
-            }
-        }
-
-        let mut success_count = 0;
-        let mut fail_count = 0;
-
-        for info_path in info_paths {
-            let folder_path = if let Some(idx) = info_path.rfind('/') {
-                &info_path[..=idx]
-            } else {
-                ""
-            };
-
-            let info: BulkInfoJson = {
-                let mut info_file = archive.by_name(&info_path).unwrap();
-                let mut content = String::new();
-                std::io::Read::read_to_string(&mut info_file, &mut content).map_err(|_| "Failed to read info.json")?;
-                match serde_json::from_str(&content) {
-                    Ok(i) => i,
-                    Err(e) => {
-                        error!("Failed to parse JSON in {}: {:?}", info_path, e);
-                        fail_count += 1;
-                        continue;
+            let info_paths: Vec<String> = (0..archive.len())
+                .filter_map(|i| {
+                    let f = archive.by_index(i).ok()?;
+                    if f.name().ends_with("info.json") {
+                        Some(f.name().to_string())
+                    } else {
+                        None
                     }
-                }
-            };
+                })
+                .collect();
 
-            let rom_filename = info.rom.as_deref().unwrap_or("");
-            let cover_filename = info.cover.as_deref().unwrap_or("");
+            info!("Found {} games to process in zip", info_paths.len());
 
-            if rom_filename.is_empty() || cover_filename.is_empty() {
-                error!("Missing rom or cover filename in {}", info_path);
+            for path in info_paths {
+                let folder = path.rfind('/').map(|i| &path[..=i]).unwrap_or("");
+                let info: BulkInfoJson = {
+                    let mut info_file = archive.by_name(&path).map_err(|_| "Missing info")?;
+                    serde_json::from_reader(&mut info_file).map_err(|_| "JSON error")?
+                };
+
+                let rom_p = format!("{}{}", folder, info.rom.as_deref().unwrap_or(""));
+                let cov_p = format!("{}{}", folder, info.cover.as_deref().unwrap_or(""));
+
+                let mut rb = Vec::new();
+                archive
+                    .by_name(&rom_p)
+                    .map_err(|_| "No ROM")?
+                    .read_to_end(&mut rb)
+                    .map_err(|_| "Read error")?;
+                let mut cb = Vec::new();
+                archive
+                    .by_name(&cov_p)
+                    .map_err(|_| "No Cover")?
+                    .read_to_end(&mut cb)
+                    .map_err(|_| "Read error")?;
+
+                results.push((info, rb, cb));
+            }
+            Ok(results)
+        }
+    })
+    .await
+    .map_err(|_| {
+        let _ = std::fs::remove_file(&temp_path);
+        V1ApiError::InternalError
+    })?
+    .map_err(|e| {
+        error!("Extraction failed: {}", e);
+        let _ = std::fs::remove_file(&temp_path);
+        V1ApiError::InternalError
+    })?;
+
+    let mut success_count = 0;
+    let mut fail_count = 0;
+
+    for (info, rom_bytes, cover_bytes) in entries {
+        let title = info.title.clone().unwrap_or_else(|| "Unknown".into());
+        let rom_md5 = compute_md5(&rom_bytes);
+        let img_md5 = compute_md5(&cover_bytes);
+
+        if let Some(expected_md5) = &info.md5 {
+            if rom_md5 != *expected_md5 {
+                error!(
+                    "MD5 mismatch for {}: expected {}, got {}",
+                    title, expected_md5, rom_md5
+                );
                 fail_count += 1;
                 continue;
-            }
-
-            let rom_path = format!("{}{}", folder_path, rom_filename);
-            let cover_path = format!("{}{}", folder_path, cover_filename);
-
-            let rom_bytes = match archive.by_name(&rom_path) {
-                Ok(mut f) => {
-                    let mut b = Vec::new();
-                    std::io::Read::read_to_end(&mut f, &mut b).unwrap();
-                    b
-                }
-                Err(_) => {
-                    error!("Could not find rom file {}", rom_path);
-                    fail_count += 1;
-                    continue;
-                }
-            };
-
-            let cover_bytes = match archive.by_name(&cover_path) {
-                Ok(mut f) => {
-                    let mut b = Vec::new();
-                    std::io::Read::read_to_end(&mut f, &mut b).unwrap();
-                    b
-                }
-                Err(_) => {
-                    error!("Could not find cover file {}", cover_path);
-                    fail_count += 1;
-                    continue;
-                }
-            };
-
-            let rom_md5 = compute_md5(&rom_bytes);
-            let img_md5 = compute_md5(&cover_bytes);
-
-            let rom_ext = std::path::Path::new(rom_filename).extension().and_then(|e| e.to_str()).unwrap_or("bin");
-            let img_ext = std::path::Path::new(cover_filename).extension().and_then(|e| e.to_str()).unwrap_or("jpg");
-
-            let console = info.console.unwrap_or_else(|| "Unknown".to_string());
-            let title = info.title.unwrap_or_else(|| "Unknown Game".to_string());
-
-            let s3_rom_path = format!("/roms/{}/{}.{}", console, rom_md5, rom_ext);
-            let s3_img_path = format!("/covers/{}/{}.{}", console, img_md5, img_ext);
-
-            let up_rom = s3_rom_path.clone();
-            let up_img = s3_img_path.clone();
-            let r_bytes = rom_bytes.clone();
-            let c_bytes = cover_bytes.clone();
-
-            let upload_res = tokio::runtime::Handle::current().block_on(async move {
-                let r1 = upload_object(&up_rom, &r_bytes).await;
-                let r2 = upload_object(&up_img, &c_bytes).await;
-                r1.is_ok() && r2.is_ok()
-            });
-
-            if !upload_res {
-                error!("S3 upload failed for {}", title);
-                fail_count += 1;
-                continue;
-            }
-
-            let rom_id = crate::utils::snowflake::next_id();
-
-            let db_res = tokio::runtime::Handle::current().block_on(async move {
-                let tx = sqlx::query!(
-                    "INSERT INTO roms (id, title, console, category, region, serial, release_year, rom_path, image_path, file_extension, md5_hash, file_size_bytes, languages)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-                     ON CONFLICT (id) DO UPDATE SET
-                        title = EXCLUDED.title, console = EXCLUDED.console, category = EXCLUDED.category, region = EXCLUDED.region,
-                        serial = EXCLUDED.serial, release_year = EXCLUDED.release_year, rom_path = EXCLUDED.rom_path,
-                        image_path = EXCLUDED.image_path, file_extension = EXCLUDED.file_extension, md5_hash = EXCLUDED.md5_hash,
-                        file_size_bytes = EXCLUDED.file_size_bytes, languages = EXCLUDED.languages",
-                    rom_id.to_string(), title, console, info.category.unwrap_or_default(),
-                    info.region, info.serial, info.year, s3_rom_path, s3_img_path, rom_ext, rom_md5, rom_bytes.len() as i64, info.languages
-                ).execute(&*SQL).await;
-
-                if tx.is_err() { return false; }
-
-                let user_rom_id = crate::utils::snowflake::next_id();
-                let tx2 = sqlx::query!(
-                    "INSERT INTO user_roms (id, user_id, rom_id, play_count, last_played, is_favorite)
-                     VALUES ($1, $2, $3, 0, NULL, FALSE)
-                     ON CONFLICT (user_id, rom_id) DO NOTHING",
-                    user_rom_id, user_id, rom_id.to_string()
-                ).execute(&*SQL).await;
-
-                tx2.is_ok()
-            });
-
-            if db_res {
-                success_count += 1;
-            } else {
-                fail_count += 1;
             }
         }
 
-        let _ = std::fs::remove_file(temp_path);
-        Ok::<String, String>(format!("Processed successfully. {} imported, {} failed.", success_count, fail_count))
-    }).await.map_err(|_| V1ApiError::InternalError)?;
+        let console = info.console.clone().unwrap_or_else(|| "Unknown".into());
+        let rom_ext = info
+            .rom
+            .as_deref()
+            .and_then(|s| s.split('.').last())
+            .unwrap_or("bin");
+        let img_ext = info
+            .cover
+            .as_deref()
+            .and_then(|s| s.split('.').last())
+            .unwrap_or("jpg");
 
-    match result {
-        Ok(msg) => Ok(V1ApiResponse(msg)),
-        Err(e) => {
-            error!("Bulk upload failed: {}", e);
-            Err(V1ApiError::InternalError)
+        let s3_rom = format!("/roms/{}/{}.{}", console, rom_md5, rom_ext);
+        let s3_img = format!("/covers/{}/{}.{}", console, img_md5, img_ext);
+
+        info!("Uploading files for: {}", title);
+        if tokio::try_join!(
+            upload_object(&s3_rom, &rom_bytes),
+            upload_object(&s3_img, &cover_bytes)
+        )
+        .is_err()
+        {
+            error!("S3 upload failed for: {}", title);
+            fail_count += 1;
+            continue;
+        }
+
+        let mut tx = match SQL.begin().await {
+            Ok(t) => t,
+            Err(e) => {
+                error!("Failed to start DB transaction: {:?}", e);
+                let _ = tokio::join!(delete_object(&s3_rom), delete_object(&s3_img));
+                fail_count += 1;
+                continue;
+            }
+        };
+
+        let rom_id = crate::utils::snowflake::next_id().to_string();
+        let db_res = sqlx::query!(
+            "INSERT INTO roms (id, title, console, category, region, serial, release_year, rom_path, image_path, file_extension, md5_hash, file_size_bytes, languages)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+             ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title",
+            rom_id, info.title, console, info.category, info.region, info.serial, info.year, s3_rom, s3_img, rom_ext, rom_md5, rom_bytes.len() as i64, info.languages
+        ).execute(&mut *tx).await;
+
+        if db_res.is_ok() && tx.commit().await.is_ok() {
+            info!("Successfully imported: {}", title);
+            success_count += 1;
+        } else {
+            error!("Database commit failed for: {}. Rolling back S3.", title);
+            let _ = tokio::join!(delete_object(&s3_rom), delete_object(&s3_img));
+            fail_count += 1;
         }
     }
+
+    let _ = std::fs::remove_file(temp_path);
+    info!(
+        "Bulk upload complete. Success: {}, Failed: {}",
+        success_count, fail_count
+    );
+    Ok(V1ApiResponse(format!(
+        "Processed {} successfully, {} failed.",
+        success_count, fail_count
+    )))
 }
