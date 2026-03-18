@@ -201,10 +201,7 @@ class EmunexRomsManagePage extends LitElement {
                         <div style="overflow-x: auto">
                             <table style="margin-top: 0">
                                 <thead>
-                                    <tr
-                                        ><th>Title ID</th><th>Title</th><th>Console</th><th>Added</th
-                                        ><th>Actions</th></tr
-                                    >
+                                    <tr><th>ID</th><th>Title</th><th>Console</th><th>Actions</th></tr>
                                 </thead>
                                 <tbody>
                                     ${this._loading
@@ -223,14 +220,9 @@ class EmunexRomsManagePage extends LitElement {
                                     ${this._filtered.map(
                                         (rom) => html`
                                             <tr>
-                                                <td style="font-family: monospace; font-size: 0.8rem"
-                                                    >${rom.title_id}</td
-                                                >
+                                                <td style="font-family: monospace; font-size: 0.8rem">${rom.id}</td>
                                                 <td style="font-weight: 700;">${rom.title}</td>
                                                 <td style="font-weight: 800;">${rom.console}</td>
-                                                <td style="font-size: 0.8rem; color: var(--color-text-muted)"
-                                                    >${new Date(rom.added_at * 1000).toLocaleDateString()}</td
-                                                >
                                                 <td class="action-btns">
                                                     <button
                                                         class="popout-btn btn-fit btn-info"
@@ -241,7 +233,7 @@ class EmunexRomsManagePage extends LitElement {
                                                     </button>
                                                     <button
                                                         class="popout-btn btn-fit btn-error"
-                                                        @click=${() => this.deleteRom(rom.title_id)}
+                                                        @click=${() => this.deleteRom(rom.id)}
                                                     >
                                                         <span class="btn-edge"></span
                                                         ><span class="btn-front">Delete</span>
@@ -281,10 +273,10 @@ class EmunexRomsManagePage extends LitElement {
                         <form id="editForm" @submit=${this.submitEdit}>
                             <div class="grid-2">
                                 <div class="form-group">
-                                    <label>Title ID (Read-only)</label>
+                                    <label>ID (Read-only)</label>
                                     <input
                                         type="text"
-                                        .value=${this._editingRom.title_id}
+                                        .value=${this._editingrom.id}
                                         readonly
                                         style="opacity: 0.7; cursor: not-allowed"
                                     />
@@ -456,7 +448,7 @@ class EmunexRomsManagePage extends LitElement {
 
     async submitEdit(e) {
         e.preventDefault();
-        const id = this._editingRom.title_id;
+        const id = this._editingrom.id;
         const root = this.renderRoot;
 
         const reqData = {
