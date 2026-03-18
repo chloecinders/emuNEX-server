@@ -1,4 +1,5 @@
 use rocket::{put, serde::json::Json};
+use tracing::error;
 
 use crate::{
     SQL,
@@ -43,7 +44,6 @@ pub async fn get_users(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1UserR
     Ok(V1ApiResponse(users))
 }
 
-
 #[put("/api/v1/users/<id>", format = "json", data = "<data>")]
 pub async fn update_user(
     id: i64,
@@ -87,7 +87,7 @@ pub async fn get_invites(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1Inv
 
     let invites = sqlx::query!(
         r#"
-        SELECT i.code, i.created_at, u.username as used_by_username, i.used_at
+        SELECT i.code, i.created_at, u.username as "used_by_username?", i.used_at
         FROM invite_codes i
         LEFT JOIN users u ON i.used_by = u.id
         ORDER BY i.created_at DESC
@@ -95,14 +95,17 @@ pub async fn get_invites(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1Inv
     )
     .fetch_all(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?;
+    .map_err(|e| {
+        error!("Database Error: {e:?}");
+        V1ApiError::InternalError
+    })?;
 
     let res = invites
         .into_iter()
         .map(|i| V1InviteResponse {
             code: i.code,
             created_at: i.created_at.expect("created_at should exist"),
-            used_by_username: Some(i.used_by_username),
+            used_by_username: i.used_by_username,
             used_at: i.used_at,
         })
         .collect();
