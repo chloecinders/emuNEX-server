@@ -177,7 +177,7 @@ class EmunexUsersPage extends LitElement {
                                                     <td>
                                                         ${isEditing
                                                             ? html` <select
-                                                                  .value=${this._editRole}
+                                                                  .value=${this._editRole.toLowerCase()}
                                                                   @change=${(e) => (this._editRole = e.target.value)}
                                                                   style="padding: 4px; font-size: 0.8rem;"
                                                               >
