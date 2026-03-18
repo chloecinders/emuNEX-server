@@ -30,6 +30,7 @@ pub struct V1RomListResponse {
     pub region: Option<String>,
     pub release_year: Option<i32>,
     pub serial: Option<String>,
+    pub languages: Option<String>,
 }
 impl V1ApiResponseTrait for Vec<V1RomListResponse> {}
 
@@ -46,7 +47,7 @@ pub async fn get_rom_list(
 
     let roms = sqlx::query_as!(
         V1RomListResponse,
-        "SELECT id, title, image_path, console, category, region, release_year, serial FROM roms
+        "SELECT id, title, image_path, console, category, region, release_year, serial, languages FROM roms
          WHERE (category = $1 OR $1 IS NULL)
          AND (console = $2 OR $2 IS NULL)
          ORDER BY title ASC
@@ -78,7 +79,7 @@ pub async fn get_search_overview(
 
     let most_played = sqlx::query_as!(
         V1RomListResponse,
-        r#"SELECT r.id, r.title, r.image_path, r.console, r.category, r.region, r.release_year, r.serial
+        r#"SELECT r.id, r.title, r.image_path, r.console, r.category, r.region, r.release_year, r.serial, r.languages
          FROM roms r
          LEFT JOIN (
              SELECT rom_id, SUM(play_count) as total_play_count
@@ -100,7 +101,7 @@ pub async fn get_search_overview(
 
     let recently_added = sqlx::query_as!(
         V1RomListResponse,
-        "SELECT id, title, image_path, console, category, region, release_year, serial FROM roms
+        "SELECT id, title, image_path, console, category, region, release_year, serial, languages FROM roms
          ORDER BY created_at DESC NULLS LAST
          LIMIT 50"
     )
@@ -128,7 +129,7 @@ pub async fn get_search_overview(
         let category = record.category;
         let cat_roms = sqlx::query_as!(
             V1RomListResponse,
-            r#"SELECT id, title, image_path, console, category, region, release_year, serial FROM roms
+            r#"SELECT id, title, image_path, console, category, region, release_year, serial, languages FROM roms
                  WHERE category = $1
                  ORDER BY title ASC
                  LIMIT 50"#,
@@ -164,6 +165,7 @@ pub struct V1RomFullResponse {
     pub md5_hash: Option<String>,
     pub release_year: Option<i32>,
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub languages: Option<String>,
 }
 impl V1ApiResponseTrait for V1RomFullResponse {}
 
@@ -172,7 +174,7 @@ pub async fn get_rom_single(
     id: &str,
     _user: AuthenticatedUser,
 ) -> V1ApiResponseType<V1RomFullResponse> {
-    let rom = sqlx::query_as!(V1RomFullResponse, "SELECT id, title, console, region, category, serial, rom_path, image_path, file_extension, file_size_bytes, md5_hash, release_year, created_at FROM roms WHERE id = $1", id)
+    let rom = sqlx::query_as!(V1RomFullResponse, "SELECT id, title, console, region, category, serial, rom_path, image_path, file_extension, file_size_bytes, md5_hash, release_year, created_at, languages FROM roms WHERE id = $1", id)
         .fetch_optional(&*SQL)
         .await
         .map_err(|e| {
@@ -198,7 +200,7 @@ pub async fn search_roms(
 
     let results = sqlx::query_as!(
         V1RomListResponse,
-        r#"SELECT id, title, image_path, console, category, region, release_year, serial FROM roms
+        r#"SELECT id, title, image_path, console, category, region, release_year, serial, languages FROM roms
          WHERE (
              title ILIKE '%' || $1 || '%'
              OR serial ILIKE $1 || '%'
@@ -234,6 +236,7 @@ pub struct V1RomUpload<'r> {
     release_year: Option<i32>,
     serial: Option<String>,
     md5_hash: Option<String>,
+    languages: Option<String>,
     rom_file: TempFile<'r>,
     image_file: TempFile<'r>,
 }
@@ -313,8 +316,8 @@ pub async fn upload_rom(
     let rom_id = crate::utils::snowflake::next_id();
 
     sqlx::query!(
-        "INSERT INTO roms (id, title, console, category, region, serial, release_year, rom_path, image_path, file_extension, md5_hash, file_size_bytes)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        "INSERT INTO roms (id, title, console, category, region, serial, release_year, rom_path, image_path, file_extension, md5_hash, file_size_bytes, languages)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          ON CONFLICT (id) DO UPDATE SET
             title = EXCLUDED.title,
             console = EXCLUDED.console,
@@ -326,7 +329,8 @@ pub async fn upload_rom(
             image_path = EXCLUDED.image_path,
             file_extension = EXCLUDED.file_extension,
             md5_hash = EXCLUDED.md5_hash,
-            file_size_bytes = EXCLUDED.file_size_bytes",
+            file_size_bytes = EXCLUDED.file_size_bytes,
+            languages = EXCLUDED.languages",
         rom_id.to_string(),
         data.title,
         data.console,
@@ -338,7 +342,8 @@ pub async fn upload_rom(
         img_path,
         rom_ext,
         rom_md5,
-        rom_bytes.len() as i64
+        rom_bytes.len() as i64,
+        data.languages
     )
     .execute(&*SQL)
     .await
@@ -375,6 +380,7 @@ pub struct V1RomUpdateRequest {
     pub region: Option<String>,
     pub release_year: Option<i32>,
     pub serial: Option<String>,
+    pub languages: Option<String>,
 }
 
 #[put("/api/v1/roms/<id>", format = "json", data = "<data>")]
@@ -388,13 +394,14 @@ pub async fn update_rom(
     }
 
     sqlx::query!(
-        "UPDATE roms SET title = $1, console = $2, category = $3, region = $4, release_year = $5, serial = $6 WHERE id = $7",
+        "UPDATE roms SET title = $1, console = $2, category = $3, region = $4, release_year = $5, serial = $6, languages = $7 WHERE id = $8",
         data.title,
         data.console,
         data.category,
         data.region,
         data.release_year,
         data.serial,
+        data.languages,
         id
     )
     .execute(&*SQL)
@@ -636,4 +643,194 @@ pub async fn get_user_library(
         .collect();
 
     Ok(V1ApiResponse(library))
+}
+
+#[derive(FromForm)]
+pub struct V1BulkUpload<'r> {
+    zip_file: TempFile<'r>,
+}
+
+#[derive(serde::Deserialize, Debug)]
+struct BulkInfoJson {
+    title: Option<String>,
+    md5: Option<String>,
+    console: Option<String>,
+    category: Option<String>,
+    region: Option<String>,
+    year: Option<i32>,
+    serial: Option<String>,
+    rom: Option<String>,
+    cover: Option<String>,
+    languages: Option<String>,
+}
+
+#[post("/api/v1/roms/bulk_upload", format = "multipart/form-data", data = "<data>")]
+pub async fn bulk_upload_roms(
+    mut data: Form<V1BulkUpload<'_>>,
+    user: AuthenticatedUser,
+) -> V1ApiResponseType<String> {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
+        return Err(V1ApiError::NotAuthorized);
+    }
+
+    let temp_dir = std::env::temp_dir();
+    let temp_path = temp_dir.join(format!("upload_{}.zip", crate::utils::snowflake::next_id()));
+
+    data.zip_file.persist_to(&temp_path).await.map_err(|e| {
+        error!("Failed to persist zip file: {:?}", e);
+        V1ApiError::InternalError
+    })?;
+
+    let user_id = user.id.value();
+
+    let result = tokio::task::spawn_blocking(move || {
+        let file = std::fs::File::open(&temp_path).map_err(|e| format!("Failed to open temp zip: {}", e))?;
+        let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Failed to read zip archive: {}", e))?;
+
+        let mut info_paths = Vec::new();
+
+        for i in 0..archive.len() {
+            let file = archive.by_index(i).unwrap();
+            if file.name().ends_with("info.json") {
+                info_paths.push(file.name().to_string());
+            }
+        }
+
+        let mut success_count = 0;
+        let mut fail_count = 0;
+
+        for info_path in info_paths {
+            let folder_path = if let Some(idx) = info_path.rfind('/') {
+                &info_path[..=idx]
+            } else {
+                ""
+            };
+
+            let info: BulkInfoJson = {
+                let mut info_file = archive.by_name(&info_path).unwrap();
+                let mut content = String::new();
+                std::io::Read::read_to_string(&mut info_file, &mut content).map_err(|_| "Failed to read info.json")?;
+                match serde_json::from_str(&content) {
+                    Ok(i) => i,
+                    Err(e) => {
+                        error!("Failed to parse JSON in {}: {:?}", info_path, e);
+                        fail_count += 1;
+                        continue;
+                    }
+                }
+            };
+
+            let rom_filename = info.rom.as_deref().unwrap_or("");
+            let cover_filename = info.cover.as_deref().unwrap_or("");
+
+            if rom_filename.is_empty() || cover_filename.is_empty() {
+                error!("Missing rom or cover filename in {}", info_path);
+                fail_count += 1;
+                continue;
+            }
+
+            let rom_path = format!("{}{}", folder_path, rom_filename);
+            let cover_path = format!("{}{}", folder_path, cover_filename);
+
+            let rom_bytes = match archive.by_name(&rom_path) {
+                Ok(mut f) => {
+                    let mut b = Vec::new();
+                    std::io::Read::read_to_end(&mut f, &mut b).unwrap();
+                    b
+                }
+                Err(_) => {
+                    error!("Could not find rom file {}", rom_path);
+                    fail_count += 1;
+                    continue;
+                }
+            };
+
+            let cover_bytes = match archive.by_name(&cover_path) {
+                Ok(mut f) => {
+                    let mut b = Vec::new();
+                    std::io::Read::read_to_end(&mut f, &mut b).unwrap();
+                    b
+                }
+                Err(_) => {
+                    error!("Could not find cover file {}", cover_path);
+                    fail_count += 1;
+                    continue;
+                }
+            };
+
+            let rom_md5 = compute_md5(&rom_bytes);
+            let img_md5 = compute_md5(&cover_bytes);
+
+            let rom_ext = std::path::Path::new(rom_filename).extension().and_then(|e| e.to_str()).unwrap_or("bin");
+            let img_ext = std::path::Path::new(cover_filename).extension().and_then(|e| e.to_str()).unwrap_or("jpg");
+
+            let console = info.console.unwrap_or_else(|| "Unknown".to_string());
+            let title = info.title.unwrap_or_else(|| "Unknown Game".to_string());
+
+            let s3_rom_path = format!("/roms/{}/{}.{}", console, rom_md5, rom_ext);
+            let s3_img_path = format!("/covers/{}/{}.{}", console, img_md5, img_ext);
+
+            let up_rom = s3_rom_path.clone();
+            let up_img = s3_img_path.clone();
+            let r_bytes = rom_bytes.clone();
+            let c_bytes = cover_bytes.clone();
+
+            let upload_res = tokio::runtime::Handle::current().block_on(async move {
+                let r1 = upload_object(&up_rom, &r_bytes).await;
+                let r2 = upload_object(&up_img, &c_bytes).await;
+                r1.is_ok() && r2.is_ok()
+            });
+
+            if !upload_res {
+                error!("S3 upload failed for {}", title);
+                fail_count += 1;
+                continue;
+            }
+
+            let rom_id = crate::utils::snowflake::next_id();
+
+            let db_res = tokio::runtime::Handle::current().block_on(async move {
+                let tx = sqlx::query!(
+                    "INSERT INTO roms (id, title, console, category, region, serial, release_year, rom_path, image_path, file_extension, md5_hash, file_size_bytes, languages)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                     ON CONFLICT (id) DO UPDATE SET
+                        title = EXCLUDED.title, console = EXCLUDED.console, category = EXCLUDED.category, region = EXCLUDED.region,
+                        serial = EXCLUDED.serial, release_year = EXCLUDED.release_year, rom_path = EXCLUDED.rom_path,
+                        image_path = EXCLUDED.image_path, file_extension = EXCLUDED.file_extension, md5_hash = EXCLUDED.md5_hash,
+                        file_size_bytes = EXCLUDED.file_size_bytes, languages = EXCLUDED.languages",
+                    rom_id.to_string(), title, console, info.category.unwrap_or_default(),
+                    info.region, info.serial, info.year, s3_rom_path, s3_img_path, rom_ext, rom_md5, rom_bytes.len() as i64, info.languages
+                ).execute(&*SQL).await;
+
+                if tx.is_err() { return false; }
+
+                let user_rom_id = crate::utils::snowflake::next_id();
+                let tx2 = sqlx::query!(
+                    "INSERT INTO user_roms (id, user_id, rom_id, play_count, last_played, is_favorite)
+                     VALUES ($1, $2, $3, 0, NULL, FALSE)
+                     ON CONFLICT (user_id, rom_id) DO NOTHING",
+                    user_rom_id, user_id, rom_id.to_string()
+                ).execute(&*SQL).await;
+
+                tx2.is_ok()
+            });
+
+            if db_res {
+                success_count += 1;
+            } else {
+                fail_count += 1;
+            }
+        }
+
+        let _ = std::fs::remove_file(temp_path);
+        Ok::<String, String>(format!("Processed successfully. {} imported, {} failed.", success_count, fail_count))
+    }).await.map_err(|_| V1ApiError::InternalError)?;
+
+    match result {
+        Ok(msg) => Ok(V1ApiResponse(msg)),
+        Err(e) => {
+            error!("Bulk upload failed: {}", e);
+            Err(V1ApiError::InternalError)
+        }
+    }
 }

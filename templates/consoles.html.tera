@@ -1,133 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Manage Consoles | emuNEX</title>
-        <link rel="stylesheet" href="/public/css/dev.css" />
-    </head>
-    <body>
-        <div class="auth-container">
-            <div class="auth-card">
-                <header class="card-header">
-                    <a href="/dev" class="back-link">Back</a>
-                    <h1>emuNEX</h1>
-                    <p class="tagline">Add or Update Console</p>
-                </header>
-
-                <div class="content">
-                    <form id="consoleForm">
-                        <div class="section-hint">Console Library</div>
-
-                        <div class="form-group">
-                            <label for="name">Console Name</label>
-                            <input type="text" id="name" name="name" placeholder="GBA" required />
-                        </div>
-
-                        <div class="form-group">
-                            <label for="card_color">Card Color Hex</label>
-                            <div style="display: flex; gap: var(--spacing-sm); align-items: center">
-                                <input
-                                    type="text"
-                                    id="card_color"
-                                    name="card_color"
-                                    placeholder="#ff0000"
-                                    style="flex: 1; font-family: monospace; text-transform: uppercase"
-                                    oninput="syncColorFromHex(this.value)"
-                                />
-                                <input
-                                    type="color"
-                                    id="hiddenColorPicker"
-                                    style="display: none"
-                                    oninput="syncColorFromPicker(this.value)"
-                                />
-                                <div
-                                    id="colorPreview"
-                                    onclick="document.getElementById('hiddenColorPicker').click()"
-                                    style="
-                                        width: 42px;
-                                        height: 42px;
-                                        border-radius: var(--radius-sm);
-                                        border: 2px solid var(--color-border);
-                                        background: #eee;
-                                        cursor: pointer;
-                                        flex-shrink: 0;
-                                        transition: transform 0.1s;
-                                    "
-                                    onmousedown="this.style.transform = 'scale(0.95)'"
-                                    onmouseup="this.style.transform = 'scale(1)'"
-                                    onmouseleave="this.style.transform = 'scale(1)'"
-                                ></div>
-                            </div>
-                        </div>
-
-                        <button type="submit" id="submitBtn" class="popout-btn" style="margin-top: var(--spacing-lg)">
-                            <span class="btn-edge"></span>
-                            <span class="btn-front">Save Console</span>
-                        </button>
-                    </form>
-
-                    <div id="statusBox" class="status-box"></div>
-                </div>
-            </div>
-        </div>
-
-        <script>
-            function syncColorFromHex(hex) {
-                const preview = document.getElementById("colorPreview");
-                const picker = document.getElementById("hiddenColorPicker");
-                if (/^#[0-9A-F]{6}$/i.test(hex)) {
-                    preview.style.backgroundColor = hex;
-                    picker.value = hex;
-                }
-            }
-
-            function syncColorFromPicker(hex) {
-                document.getElementById("card_color").value = hex.toUpperCase();
-                document.getElementById("colorPreview").style.backgroundColor = hex;
-            }
-
-            document.getElementById("consoleForm").addEventListener("submit", async (e) => {
-                e.preventDefault();
-
-                const btn = document.getElementById("submitBtn");
-                const statusBox = document.getElementById("statusBox");
-                const formData = new FormData(e.target);
-
-                const token = localStorage.getItem("token");
-
-                btn.disabled = true;
-                statusBox.innerText = "Saving console...";
-                statusBox.className = "status-box status-success";
-                statusBox.style.display = "block";
-
-                try {
-                    const response = await fetch("/api/v1/consoles", {
-                        method: "POST",
-                        body: formData,
-                        headers: {
-                            Authorization: token,
-                        },
-                    });
-
-                    const result = await response.json();
-
-                    if (response.ok) {
-                        statusBox.innerText = `Success! Console ID: ${result.data}`;
-                        statusBox.className = "status-box status-success";
-                        e.target.reset();
-                        document.getElementById("colorPreview").style.backgroundColor = "#eee";
-                    } else {
-                        statusBox.innerText = `Error: ${result.error || "Save failed"}`;
-                        statusBox.className = "status-box status-error";
-                    }
-                } catch (err) {
-                    statusBox.innerText = "A network error occurred.";
-                    statusBox.className = "status-box status-error";
-                } finally {
-                    btn.disabled = false;
-                }
-            });
-        </script>
-    </body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Add Console | emuNEX Developer Portal</title>
+    <script type="importmap">{% raw %}
+      {
+        "imports": {
+          "lit": "https://esm.sh/lit@3",
+          "lit/decorators.js": "https://esm.sh/lit@3/decorators.js"
+        }
+      }
+    {% endraw %}</script>
+    <link rel="stylesheet" href="/public/css/dev.css">
+  </head>
+  <body>
+    <emunex-consoles-page></emunex-consoles-page>
+    <script type="module" src="/public/js/consoles-page.js"></script>
+  </body>
 </html>

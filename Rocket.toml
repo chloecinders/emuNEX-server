@@ -3,6 +3,6 @@ adress = "127.0.0.1"
 port = 8000
 
 [default.limits]
-form = "1 GB"
-data-form = "1 GB"
-file = "1 GB"
+form = "10 GB"
+data-form = "10 GB"
+file = "10 GB"

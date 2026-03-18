@@ -1,90 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Developer Portal | emuNEX</title>
-        <link rel="stylesheet" href="/public/css/dev.css" />
-    </head>
-    <body>
-        <div class="auth-container">
-            <div class="auth-card">
-                <header class="card-header">
-                    <h1>emuNEX</h1>
-                </header>
-
-                <div class="content">
-                    <div class="section-hint">Management Actions</div>
-
-                    <div class="nav-links">
-                        <a href="/roms" class="nav-btn">
-                            <span>Manage ROM</span>
-                        </a>
-                        <a href="/emulators" class="nav-btn">
-                            <span>Manage Emulator</span>
-                        </a>
-                        <a href="/consoles" class="nav-btn">
-                            <span>Manage Consoles</span>
-                        </a>
-                        {% if role == "Admin" %}
-                        <a href="/users" class="nav-btn">
-                            <span>Manage Users</span>
-                        </a>
-                        {% endif %}
-                    </div>
-
-                    {% if role == "Admin" %}
-                    <div class="admin-section">
-                        <div class="section-hint">System Maintenance</div>
-                        <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: var(--spacing-md);">
-                            Connected as: <strong>{{ role }}</strong>
-                        </p>
-
-                        <button id="updateBtn" class="popout-btn" onclick="triggerUpdate()">
-                            <span class="btn-edge"></span>
-                            <span class="btn-front">Pull Update & Restart</span>
-                        </button>
-
-                        <div id="statusBox" class="status-box"></div>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        {% if role == "Admin" %}
-        <script>
-            async function triggerUpdate() {
-                const btn = document.getElementById("updateBtn");
-                const statusBox = document.getElementById("statusBox");
-
-                if (!confirm("Are you sure you want to restart the server for an update?")) return;
-
-                btn.disabled = true;
-                statusBox.innerText = "Triggering update...";
-                statusBox.className = "status-box status-success";
-                statusBox.style.display = "block";
-
-                try {
-                    const response = await fetch("/admin/update", { method: "POST" });
-                    const text = await response.text();
-
-                    if (text && text.length > 0) {
-                        statusBox.innerText = "Error: " + text;
-                        statusBox.className = "status-box status-error";
-                        btn.disabled = false;
-                    } else {
-                        statusBox.innerText = "Error: Received empty response from server.";
-                        statusBox.className = "status-box status-error";
-                        btn.disabled = false;
-                    }
-                } catch (err) {
-                    statusBox.innerText = "Server is restarting...";
-                    statusBox.className = "status-box status-success";
-                    setTimeout(() => location.reload(), 8000);
-                }
-            }
-        </script>
-        {% endif %}
-    </body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>emuNEX Developer Portal</title>
+    <script type="importmap">{% raw %}
+      {
+        "imports": {
+          "lit": "https://esm.sh/lit@3",
+          "lit/decorators.js": "https://esm.sh/lit@3/decorators.js"
+        }
+      }
+    {% endraw %}</script>
+    <link rel="stylesheet" href="/public/css/dev.css">
+  </head>
+  <body>
+    <emunex-dev-page role="{{ role }}"></emunex-dev-page>
+    <script type="module" src="/public/js/dev-page.js"></script>
+  </body>
 </html>

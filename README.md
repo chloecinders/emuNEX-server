@@ -17,6 +17,8 @@ If you want to build emuNEX server yourself you will only need to install Rust.
 
 ## Installation
 
+I highly recommend using the emuNEX-launcher found here: https://github.com/chloecinders/emuNEX-launcher. It manages the server binary and provides automatic updates.
+
 If you are using a Linux server you can just grab a binary together with the templates from the latest GitHub actions run: https://github.com/chloecinders/emuNEX-client/actions.
 If you are using a Windows server instead (I hope not) you can build the server yourself.
 

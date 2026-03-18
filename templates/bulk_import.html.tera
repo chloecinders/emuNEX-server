@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>User Administration | emuNEX Developer Portal</title>
+    <title>Bulk Import | emuNEX Developer Portal</title>
     <script type="importmap">{% raw %}
       {
         "imports": {
@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="/public/css/dev.css">
   </head>
   <body>
-    <emunex-users-page></emunex-users-page>
-    <script type="module" src="/public/js/users-page.js"></script>
+    <emunex-bulk-import-page></emunex-bulk-import-page>
+    <script type="module" src="/public/js/bulk-import-page.js"></script>
   </body>
 </html>

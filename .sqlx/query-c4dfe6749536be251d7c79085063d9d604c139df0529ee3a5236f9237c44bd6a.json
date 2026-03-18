@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO roms (id, title, console, category, region, serial, release_year, rom_path, image_path, file_extension, md5_hash, file_size_bytes, languages)\n                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)\n                     ON CONFLICT (id) DO UPDATE SET\n                        title = EXCLUDED.title, console = EXCLUDED.console, category = EXCLUDED.category, region = EXCLUDED.region,\n                        serial = EXCLUDED.serial, release_year = EXCLUDED.release_year, rom_path = EXCLUDED.rom_path,\n                        image_path = EXCLUDED.image_path, file_extension = EXCLUDED.file_extension, md5_hash = EXCLUDED.md5_hash,\n                        file_size_bytes = EXCLUDED.file_size_bytes, languages = EXCLUDED.languages",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Text",
+        "Int4",
+        "Text",
+        "Text",
+        "Varchar",
+        "Bpchar",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c4dfe6749536be251d7c79085063d9d604c139df0529ee3a5236f9237c44bd6a"
+}

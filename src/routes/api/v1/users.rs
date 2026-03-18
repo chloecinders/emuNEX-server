@@ -16,6 +16,34 @@ pub struct V1UpdateUserRequest {
     pub role: String,
 }
 
+#[derive(serde::Serialize)]
+pub struct V1UserResponse {
+    pub id: Id,
+    pub username: String,
+    pub role: UserRole,
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+impl V1ApiResponseTrait for Vec<V1UserResponse> {}
+
+#[rocket::get("/api/v1/users")]
+pub async fn get_users(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1UserResponse>> {
+    if user.role != UserRole::Admin {
+        return Err(V1ApiError::NotAuthorized);
+    }
+
+    let users = sqlx::query_as!(
+        V1UserResponse,
+        r#"SELECT id AS "id: Id", username, role AS "role: UserRole", created_at FROM users ORDER BY id ASC"#
+    )
+    .fetch_all(&*SQL)
+    .await
+    .map_err(|_| V1ApiError::InternalError)?;
+
+    Ok(V1ApiResponse(users))
+}
+
+
 #[put("/api/v1/users/<id>", format = "json", data = "<data>")]
 pub async fn update_user(
     id: i64,

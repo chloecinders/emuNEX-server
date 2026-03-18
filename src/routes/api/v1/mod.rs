@@ -5,5 +5,6 @@ pub mod guards;
 pub mod library;
 pub mod nointro;
 pub mod roms;
+pub mod reports;
 pub mod saves;
 pub mod users;

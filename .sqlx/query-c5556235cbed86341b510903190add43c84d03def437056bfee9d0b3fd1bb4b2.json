@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE roms SET title = $1, console = $2, category = $3, region = $4, release_year = $5, serial = $6 WHERE id = $7",
+  "query": "UPDATE roms SET title = $1, console = $2, category = $3, region = $4, release_year = $5, serial = $6, languages = $7 WHERE id = $8",
   "describe": {
     "columns": [],
     "parameters": {
@@ -11,10 +11,11 @@
         "Varchar",
         "Int4",
         "Text",
+        "Text",
         "Text"
       ]
     },
     "nullable": []
   },
-  "hash": "3204edddff8b959ede3ac074deef7d26b5361f1b1c75e585fa6186079db2482b"
+  "hash": "c5556235cbed86341b510903190add43c84d03def437056bfee9d0b3fd1bb4b2"
 }

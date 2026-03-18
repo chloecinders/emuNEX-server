@@ -1,0 +1,29 @@
+    Checking emunex-server v0.3.1 (C:\Users\surge\projects\emulation-thing\server)
+error[E0277]: the trait bound `std::string::String: From<i64>` is not satisfied
+  --> src\routes\api\v1\reports.rs:69:19
+   |
+69 |       let reports = sqlx::query_as!(
+   |  ___________________^
+70 | |         V1ReportListResponse,
+71 | |         r#"SELECT rep.id, rep.rom_id, r.title as "rom_title!", rep.user_id, u.username as "username!", rep.report_type, rep.descri...
+72 | |          FROM rom_reports rep
+...  |
+75 | |          ORDER BY rep.created_at ASC"#
+76 | |     )
+   | |_____^ the trait `From<i64>` is not implemented for `std::string::String`
+   |
+   = help: the following other types implement trait `From<T>`:
+             `std::string::String` implements `From<&minidom::element::Element>`
+             `std::string::String` implements `From<&mut str>`
+             `std::string::String` implements `From<&std::string::String>`
+             `std::string::String` implements `From<&str>`
+             `std::string::String` implements `From<Box<str>>`
+             `std::string::String` implements `From<Cow<'_, str>>`
+             `std::string::String` implements `From<PgCiText>`
+             `std::string::String` implements `From<Profile>`
+           and 9 others
+   = note: required for `i64` to implement `Into<std::string::String>`
+   = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `emunex-server` (bin "emunex-server") due to 1 previous error

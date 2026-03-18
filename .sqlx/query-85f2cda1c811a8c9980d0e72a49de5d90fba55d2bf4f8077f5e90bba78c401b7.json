@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, title, console, region, category, serial, rom_path, image_path, file_extension, file_size_bytes, md5_hash, release_year, created_at FROM roms WHERE id = $1",
+  "query": "SELECT id, title, console, region, category, serial, rom_path, image_path, file_extension, file_size_bytes, md5_hash, release_year, created_at, languages FROM roms WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -67,6 +67,11 @@
         "ordinal": 12,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "languages",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -87,8 +92,9 @@
       true,
       true,
       true,
+      true,
       true
     ]
   },
-  "hash": "68b982a4d1dc248b9d5f2a454700a1b8fa90b9493c121903f9d6d5faec3da6ee"
+  "hash": "85f2cda1c811a8c9980d0e72a49de5d90fba55d2bf4f8077f5e90bba78c401b7"
 }

@@ -20,3 +20,12 @@ pub fn rom_upload(user: AuthenticatedUser) -> Result<Template, Status> {
 
     Ok(Template::render("rom", context! {}))
 }
+
+#[get("/roms/bulk_upload")]
+pub fn rom_bulk_upload(user: AuthenticatedUser) -> Result<Template, Status> {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
+        return Err(Status::Unauthorized);
+    }
+
+    Ok(Template::render("bulk_import", context! {}))
+}

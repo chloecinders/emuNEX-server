@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, title, image_path, console, category, region, release_year, serial FROM roms\n         WHERE (category = $1 OR $1 IS NULL)\n         AND (console = $2 OR $2 IS NULL)\n         ORDER BY title ASC\n         LIMIT $3 OFFSET $4",
+  "query": "SELECT r.id, r.title, r.image_path, r.console, r.category, r.region, r.release_year, r.serial, r.languages\n         FROM roms r\n         LEFT JOIN (\n             SELECT rom_id, SUM(play_count) as total_play_count\n             FROM user_roms\n             GROUP BY rom_id\n         ) ur ON r.id = ur.rom_id\n         ORDER BY COALESCE(ur.total_play_count, 0) DESC, r.title ASC\n         LIMIT 50",
   "describe": {
     "columns": [
       {
@@ -42,15 +42,15 @@
         "ordinal": 7,
         "name": "serial",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "languages",
+        "type_info": "Text"
       }
     ],
     "parameters": {
-      "Left": [
-        "Text",
-        "Text",
-        "Int8",
-        "Int8"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -60,8 +60,9 @@
       false,
       true,
       true,
+      true,
       true
     ]
   },
-  "hash": "b3176b82b4936a509f10fd929420328377b4f3c7482071d6487bfe70ba3772cf"
+  "hash": "f7d0a27fb98137b491d432f6cc2957be4418e335173011472d2da6610ffe0f56"
 }
