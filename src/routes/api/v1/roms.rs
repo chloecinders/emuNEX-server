@@ -154,6 +154,7 @@ pub async fn get_search_overview(
 pub struct V1RomFullResponse {
     pub id: String,
     pub title: String,
+    pub realname: Option<String>,
     pub console: String,
     pub region: Option<String>,
     pub category: String,
@@ -174,7 +175,7 @@ pub async fn get_rom_single(
     id: &str,
     _user: AuthenticatedUser,
 ) -> V1ApiResponseType<V1RomFullResponse> {
-    let rom = sqlx::query_as!(V1RomFullResponse, "SELECT id, title, console, region, category, serial, rom_path, image_path, file_extension, file_size_bytes, md5_hash, release_year, created_at, languages FROM roms WHERE id = $1", id)
+    let rom = sqlx::query_as!(V1RomFullResponse, "SELECT * FROM roms WHERE id = $1", id)
         .fetch_optional(&*SQL)
         .await
         .map_err(|e| {
