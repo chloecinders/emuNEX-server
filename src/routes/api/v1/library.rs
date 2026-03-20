@@ -34,7 +34,7 @@ pub async fn get_shelves(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1She
     let mut response = Vec::new();
 
     for shelf in shelves_records {
-        let games = sqlx::query_as!(
+        let mut games = sqlx::query_as!(
             V1RomListResponse,
             "SELECT r.id, r.title, r.image_path, r.console, r.category, r.release_year, r.region, r.serial, r.languages
              FROM roms r
@@ -49,6 +49,10 @@ pub async fn get_shelves(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1She
             error!("{:?}", e);
             V1ApiError::InternalError
         })?;
+
+        for game in &mut games {
+            game.image_path = format!("{}.webp", game.image_path.replace("/covers/", "/covers_small/"));
+        }
 
         response.push(V1ShelfResponse {
             id: Id::new(shelf.id),

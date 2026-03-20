@@ -45,7 +45,7 @@ pub async fn get_rom_list(
     let final_limit = limit.unwrap_or(50).min(50);
     let final_offset = offset.unwrap_or(0);
 
-    let roms = sqlx::query_as!(
+    let mut roms = sqlx::query_as!(
         V1RomListResponse,
         "SELECT id, title, image_path, console, category, region, release_year, serial, languages FROM roms
          WHERE (category = $1 OR $1 IS NULL)
@@ -64,6 +64,10 @@ pub async fn get_rom_list(
         V1ApiError::InternalError
     })?;
 
+    for rom in &mut roms {
+        rom.image_path = format!("{}.webp", rom.image_path.replace("/covers/", "/covers_small/"));
+    }
+
     Ok(V1ApiResponse(roms))
 }
 
@@ -77,7 +81,7 @@ pub async fn get_search_overview(
 ) -> V1ApiResponseType<V1SearchOverviewResponse> {
     let mut overview = std::collections::HashMap::new();
 
-    let most_played = sqlx::query_as!(
+    let mut most_played = sqlx::query_as!(
         V1RomListResponse,
         r#"SELECT r.id, r.title, r.image_path, r.console, r.category, r.region, r.release_year, r.serial, r.languages
          FROM roms r
@@ -95,11 +99,16 @@ pub async fn get_search_overview(
         error!("Failed to fetch most played: {:?}", e);
         V1ApiError::InternalError
     })?;
+    
+    for rom in &mut most_played {
+        rom.image_path = format!("{}.webp", rom.image_path.replace("/covers/", "/covers_small/"));
+    }
+
     if !most_played.is_empty() {
         overview.insert("Most Played".to_string(), most_played);
     }
 
-    let recently_added = sqlx::query_as!(
+    let mut recently_added = sqlx::query_as!(
         V1RomListResponse,
         "SELECT id, title, image_path, console, category, region, release_year, serial, languages FROM roms
          ORDER BY created_at DESC NULLS LAST
@@ -111,6 +120,11 @@ pub async fn get_search_overview(
         error!("Failed to fetch recently added: {:?}", e);
         V1ApiError::InternalError
     })?;
+    
+    for rom in &mut recently_added {
+        rom.image_path = format!("{}.webp", rom.image_path.replace("/covers/", "/covers_small/"));
+    }
+
     if !recently_added.is_empty() {
         overview.insert("Recently Added".to_string(), recently_added);
     }
@@ -127,7 +141,7 @@ pub async fn get_search_overview(
 
     for record in categories {
         let category = record.category;
-        let cat_roms = sqlx::query_as!(
+        let mut cat_roms = sqlx::query_as!(
             V1RomListResponse,
             r#"SELECT id, title, image_path, console, category, region, release_year, serial, languages FROM roms
                  WHERE category = $1
@@ -141,6 +155,10 @@ pub async fn get_search_overview(
             error!("Failed to fetch roms for category {}: {:?}", category, e);
             V1ApiError::InternalError
         })?;
+
+        for rom in &mut cat_roms {
+            rom.image_path = format!("{}.webp", rom.image_path.replace("/covers/", "/covers_small/"));
+        }
 
         if !cat_roms.is_empty() {
             overview.insert(category, cat_roms);
@@ -199,7 +217,7 @@ pub async fn search_roms(
     let final_limit = limit.unwrap_or(50).min(50);
     let final_offset = offset.unwrap_or(0);
 
-    let results = sqlx::query_as!(
+    let mut results = sqlx::query_as!(
         V1RomListResponse,
         r#"SELECT id, title, image_path, console, category, region, release_year, serial, languages FROM roms
          WHERE (
@@ -224,6 +242,10 @@ pub async fn search_roms(
         error!("Failed to search roms with query '{}': {:?}", query, e);
         V1ApiError::InternalError
     })?;
+
+    for rom in &mut results {
+        rom.image_path = format!("{}.webp", rom.image_path.replace("/covers/", "/covers_small/"));
+    }
 
     Ok(V1ApiResponse(results))
 }
@@ -636,7 +658,7 @@ pub async fn get_user_library(
             region: r.region,
             rom_id: r.rom_id,
             title: r.title,
-            image_path: r.image_path,
+            image_path: format!("{}.webp", r.image_path.replace("/covers/", "/covers_small/")),
             console: r.console,
             play_count: r.play_count,
             last_played: r.last_played,

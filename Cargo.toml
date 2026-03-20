@@ -27,4 +27,5 @@ governor = { version = "0.6", features = [] }
 quick-xml = { version = "0.37" }
 md5 = "0.7"
 dashmap = "6"
+image = "0.25.10"
 
