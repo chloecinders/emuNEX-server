@@ -25,6 +25,7 @@ class EmunexEmulatorsManagePage extends LitElement {
         _editModalOpen: { type: Boolean, state: true },
         _editingEmulator: { type: Object, state: true },
         _editTags: { type: Array, state: true },
+        _editConsoles: { type: Array, state: true },
         _editFileName: { type: String, state: true },
         _dragover: { type: Boolean, state: true },
     };
@@ -95,6 +96,7 @@ class EmunexEmulatorsManagePage extends LitElement {
         this._editModalOpen = false;
         this._editingEmulator = null;
         this._editTags = [];
+        this._editConsoles = [];
         this._editFileName = "";
         this._dragover = false;
         this._searchTimeout = null;
@@ -141,7 +143,7 @@ class EmunexEmulatorsManagePage extends LitElement {
         clearTimeout(this._searchTimeout);
         this._searchTimeout = setTimeout(() => {
             this._filtered = this._emulators.filter(
-                (e) => e.name.toLowerCase().includes(q) || e.console.toLowerCase().includes(q),
+                (e) => e.name.toLowerCase().includes(q) || (e.consoles && e.consoles.some(c => c.toLowerCase().includes(q))),
             );
         }, 300);
     }
@@ -203,7 +205,7 @@ class EmunexEmulatorsManagePage extends LitElement {
                                                     >#${emu.id}</td
                                                 >
                                                 <td style="font-weight: 700;">${emu.name}</td>
-                                                <td style="font-weight: 800;">${emu.console}</td>
+                                                <td style="font-weight: 800;">${(emu.consoles || []).map(c => c.toUpperCase()).join(", ")}</td>
                                                 <td
                                                     style="text-transform: uppercase; font-size: 0.8rem; font-weight: 700;"
                                                     >${emu.platform}</td
@@ -263,13 +265,17 @@ class EmunexEmulatorsManagePage extends LitElement {
 
                             <div class="grid-2">
                                 <div class="form-group">
-                                    <label>Console</label>
-                                    <select id="edit-console" .value=${this._editingEmulator.console} required>
-                                        <option value="">select console</option>
+                                    <label>Consoles (select at least one)</label>
+                                    <div class="checkbox-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 4px;">
                                         ${this._consoles.map(
-                                            (c) => html`<option value=${c.name}>${c.name.toUpperCase()}</option>`,
+                                            (c) => html`
+                                                <label class="checkbox-row" style="margin: 0; align-items: center; gap: 4px;">
+                                                    <input type="checkbox" .checked=${this._editConsoles.includes(c.name)} @change=${(e) => this._toggleConsole(c.name, e.target.checked)}>
+                                                    ${c.name.toUpperCase()}
+                                                </label>
+                                            `
                                         )}
-                                    </select>
+                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <label>Target Platform</label>
@@ -396,6 +402,14 @@ class EmunexEmulatorsManagePage extends LitElement {
         this._editTags = this._editTags.filter((tag) => tag !== t);
     }
 
+    _toggleConsole(name, checked) {
+        if (checked) {
+            if (!this._editConsoles.includes(name)) this._editConsoles = [...this._editConsoles, name];
+        } else {
+            this._editConsoles = this._editConsoles.filter(c => c !== name);
+        }
+    }
+
     _dragEnter(e) {
         e.preventDefault();
         this._dragover = true;
@@ -428,14 +442,13 @@ class EmunexEmulatorsManagePage extends LitElement {
     openEdit(emu) {
         this._editingEmulator = { ...emu };
         this._editTags = [...(emu.config_files || [])];
+        this._editConsoles = [...(emu.consoles || [])];
         this._editFileName = "";
         this._editModalOpen = true;
 
         // Slight hack for select sync timing since Lit updates are async
         setTimeout(() => {
-            const pConsole = this.renderRoot.querySelector("#edit-console");
             const pPlatform = this.renderRoot.querySelector("#edit-platform");
-            if (pConsole) pConsole.value = emu.console;
             if (pPlatform) pPlatform.value = emu.platform;
         }, 0);
     }
@@ -451,7 +464,7 @@ class EmunexEmulatorsManagePage extends LitElement {
 
         const updateData = {
             name: root.querySelector("#edit-name").value,
-            console: root.querySelector("#edit-console").value,
+            consoles: this._editConsoles,
             platform: root.querySelector("#edit-platform").value,
             run_command: root.querySelector("#edit-command").value,
             binary_name: root.querySelector("#edit-binary-name").value,

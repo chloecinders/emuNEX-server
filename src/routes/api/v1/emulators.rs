@@ -26,7 +26,7 @@ use crate::{
 pub struct V1EmulatorResponse {
     pub id: Id,
     pub name: String,
-    pub console: String,
+    pub consoles: Vec<String>,
     pub platform: String,
     pub run_command: String,
     pub binary_path: String,
@@ -53,7 +53,7 @@ pub async fn get_emulators_for_platform(
         SELECT
             id,
             name,
-            console,
+            consoles as "consoles!",
             platform,
             run_command,
             binary_path,
@@ -65,7 +65,7 @@ pub async fn get_emulators_for_platform(
             file_size as "file_size!",
             created_at
         FROM emulators
-        WHERE LOWER(console) = LOWER($1) AND platform = $2
+        WHERE $1 ILIKE ANY(consoles) AND platform = $2
         ORDER BY name ASC
         "#,
         console,
@@ -94,7 +94,7 @@ pub async fn get_all_emulators(
         SELECT
             id,
             name,
-            console,
+            consoles as "consoles!",
             platform,
             run_command,
             binary_path,
@@ -106,7 +106,7 @@ pub async fn get_all_emulators(
             file_size as "file_size!",
             created_at
         FROM emulators
-        ORDER BY console ASC, name ASC
+        ORDER BY consoles ASC, name ASC
         "#
     )
     .fetch_all(&*SQL)
@@ -122,7 +122,7 @@ pub async fn get_all_emulators(
 #[derive(FromForm)]
 pub struct V1EmulatorUploadRequest<'r> {
     pub name: String,
-    pub console: String,
+    pub consoles: Vec<String>,
     pub platform: String,
     pub run_command: String,
     pub binary_name: Option<String>,
@@ -174,7 +174,7 @@ pub async fn emulator_upload(
     let binary_path = format!(
         "/emulators/{}/{}/{}.{}",
         data.platform.to_lowercase(),
-        data.console.to_lowercase().replace(" ", "_"),
+        data.consoles.join("_").to_lowercase().replace(" ", "_"),
         data.name.to_lowercase().replace(" ", "_"),
         bin_ext
     );
@@ -190,11 +190,11 @@ pub async fn emulator_upload(
     let id = next_id();
 
     sqlx::query!(
-        "INSERT INTO emulators (id, name, console, platform, run_command, binary_name, save_path, binary_path, md5_hash, config_files, zipped, file_size)
+        "INSERT INTO emulators (id, name, consoles, platform, run_command, binary_name, save_path, binary_path, md5_hash, config_files, zipped, file_size)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
         id,
         data.name,
-        data.console,
+        &data.consoles,
         data.platform,
         data.run_command,
         data.binary_name,
@@ -218,7 +218,7 @@ pub async fn emulator_upload(
 #[derive(serde::Deserialize)]
 pub struct V1EmulatorUpdateRequest {
     pub name: String,
-    pub console: String,
+    pub consoles: Vec<String>,
     pub platform: String,
     pub run_command: String,
     pub binary_name: Option<String>,
@@ -238,9 +238,9 @@ pub async fn update_emulator(
     }
 
     sqlx::query!(
-        "UPDATE emulators SET name = $1, console = $2, platform = $3, run_command = $4, binary_name = $5, save_path = $6, config_files = $7, zipped = $8 WHERE id = $9",
+        "UPDATE emulators SET name = $1, consoles = $2, platform = $3, run_command = $4, binary_name = $5, save_path = $6, config_files = $7, zipped = $8 WHERE id = $9",
         data.name,
-        data.console,
+        &data.consoles,
         data.platform,
         data.run_command,
         data.binary_name,

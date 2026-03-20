@@ -10,6 +10,7 @@ class EmunexEmulatorPage extends LitElement {
     _statusType: { type: String, state: true },
     _loading: { type: Boolean, state: true },
     _consoles: { type: Array, state: true },
+    _selectedConsoles: { type: Array, state: true },
     _tags: { type: Array, state: true },
     _fileName: { type: String, state: true },
     _dragover: { type: Boolean, state: true },
@@ -31,6 +32,7 @@ class EmunexEmulatorPage extends LitElement {
     this._statusType = "";
     this._loading = false;
     this._consoles = [];
+    this._selectedConsoles = [];
     this._tags = [];
     this._fileName = "";
     this._dragover = false;
@@ -71,11 +73,15 @@ class EmunexEmulatorPage extends LitElement {
                   <input type="text" id="name" name="name" placeholder="VBA-M" required />
                 </div>
                 <div class="form-group">
-                  <label for="console">Console</label>
-                  <select id="console" name="console" required>
-                    <option value="">select console</option>
-                    ${this._consoles.map(c => html`<option value=${c.name}>${c.name.toUpperCase()}</option>`)}
-                  </select>
+                  <label>Consoles (select at least one)</label>
+                  <div class="checkbox-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 4px;">
+                    ${this._consoles.map(c => html`
+                      <label class="checkbox-row" style="margin: 0; align-items: center; gap: 4px;">
+                        <input type="checkbox" .checked=${this._selectedConsoles.includes(c.name)} @change=${(e) => this._toggleConsole(c.name, e.target.checked)}>
+                        ${c.name.toUpperCase()}
+                      </label>
+                    `)}
+                  </div>
                 </div>
               </div>
 
@@ -162,6 +168,14 @@ class EmunexEmulatorPage extends LitElement {
     this._tags = this._tags.filter(tag => tag !== t);
   }
 
+  _toggleConsole(name, checked) {
+    if (checked) {
+      if (!this._selectedConsoles.includes(name)) this._selectedConsoles = [...this._selectedConsoles, name];
+    } else {
+      this._selectedConsoles = this._selectedConsoles.filter(c => c !== name);
+    }
+  }
+
   _dragEnter(e) { e.preventDefault(); this._dragover = true; }
   _dragOver(e) { e.preventDefault(); this._dragover = true; }
   _dragLeave(e) { e.preventDefault(); this._dragover = false; }
@@ -190,6 +204,9 @@ class EmunexEmulatorPage extends LitElement {
     formData.delete("config_files");
     this._tags.forEach(file => formData.append("config_files", file));
 
+    formData.delete("consoles");
+    this._selectedConsoles.forEach(c => formData.append("consoles", c));
+
     const isZipped = this.renderRoot.querySelector("#zipped").checked;
     formData.set("zipped", isZipped);
 
@@ -206,6 +223,7 @@ class EmunexEmulatorPage extends LitElement {
         this._statusType = "success";
         form.reset();
         this._tags = [];
+        this._selectedConsoles = [];
         this._fileName = "";
       } else {
         this._status = `Error: ${result.error || "Registration failed"}`;
