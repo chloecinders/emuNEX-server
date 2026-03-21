@@ -12,6 +12,7 @@ class EmunexEmulatorPage extends LitElement {
     _consoles: { type: Array, state: true },
     _selectedConsoles: { type: Array, state: true },
     _tags: { type: Array, state: true },
+    _saveExtensions: { type: Array, state: true },
     _fileName: { type: String, state: true },
     _dragover: { type: Boolean, state: true },
   };
@@ -34,6 +35,7 @@ class EmunexEmulatorPage extends LitElement {
     this._consoles = [];
     this._selectedConsoles = [];
     this._tags = [];
+    this._saveExtensions = [];
     this._fileName = "";
     this._dragover = false;
   }
@@ -119,6 +121,16 @@ class EmunexEmulatorPage extends LitElement {
                 </div>
               </div>
 
+              <div class="form-group">
+                <label>Save File Extensions (press Enter to add, e.g. <code>.sra</code>, <code>.srm</code>)</label>
+                <div class="tag-system">
+                  ${this._saveExtensions.map(t => html`<div class="tag">${t} <span class="tag-remove" @click=${() => this._removeSaveExt(t)}>×</span></div>`)}
+                  <div class="tag-input-wrapper">
+                    <input type="text" placeholder=".sra" @keydown=${this._handleSaveExtKeydown} />
+                  </div>
+                </div>
+              </div>
+
               <div class="checkbox-row">
                 <input type="checkbox" id="zipped" name="zipped" />
                 <label for="zipped">Is Zipped / Bundle</label>
@@ -168,6 +180,19 @@ class EmunexEmulatorPage extends LitElement {
     this._tags = this._tags.filter(tag => tag !== t);
   }
 
+  _handleSaveExtKeydown(e) {
+    if (e.key === "Enter" && e.target.value.trim()) {
+      e.preventDefault();
+      const val = e.target.value.trim();
+      if (!this._saveExtensions.includes(val)) this._saveExtensions = [...this._saveExtensions, val];
+      e.target.value = "";
+    }
+  }
+
+  _removeSaveExt(t) {
+    this._saveExtensions = this._saveExtensions.filter(ext => ext !== t);
+  }
+
   _toggleConsole(name, checked) {
     if (checked) {
       if (!this._selectedConsoles.includes(name)) this._selectedConsoles = [...this._selectedConsoles, name];
@@ -204,6 +229,9 @@ class EmunexEmulatorPage extends LitElement {
     formData.delete("config_files");
     this._tags.forEach(file => formData.append("config_files", file));
 
+    formData.delete("save_extensions");
+    this._saveExtensions.forEach(ext => formData.append("save_extensions", ext));
+
     formData.delete("consoles");
     this._selectedConsoles.forEach(c => formData.append("consoles", c));
 
@@ -223,6 +251,7 @@ class EmunexEmulatorPage extends LitElement {
         this._statusType = "success";
         form.reset();
         this._tags = [];
+        this._saveExtensions = [];
         this._selectedConsoles = [];
         this._fileName = "";
       } else {

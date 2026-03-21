@@ -72,6 +72,7 @@ async fn rocket() -> _ {
                 routes::api::v1::auth::me,
                 routes::api::v1::roms::get_rom_list,
                 routes::api::v1::roms::get_rom_single,
+                routes::api::v1::roms::get_rom_versions,
                 routes::api::v1::roms::search_roms,
                 routes::api::v1::roms::upload_rom,
                 routes::api::v1::roms::bulk_upload_roms,

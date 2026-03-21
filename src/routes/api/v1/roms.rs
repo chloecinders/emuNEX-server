@@ -8,6 +8,7 @@ use rocket::{
     serde::json::Json,
 };
 use serde::Serialize;
+use sqlx::types::chrono;
 use tracing::{error, info};
 
 use crate::{
@@ -24,6 +25,7 @@ use crate::{
 pub struct V1RomListResponse {
     pub id: String,
     pub title: String,
+    pub realname: Option<String>,
     pub image_path: String,
     pub console: String,
     pub category: Option<String>,
@@ -31,6 +33,7 @@ pub struct V1RomListResponse {
     pub release_year: Option<i32>,
     pub serial: Option<String>,
     pub languages: Option<String>,
+    pub versions_count: i64,
 }
 impl V1ApiResponseTrait for Vec<V1RomListResponse> {}
 
@@ -47,11 +50,16 @@ pub async fn get_rom_list(
 
     let mut roms = sqlx::query_as!(
         V1RomListResponse,
-        "SELECT id, title, image_path, console, category, region, release_year, serial, languages FROM roms
-         WHERE (category = $1 OR $1 IS NULL)
-         AND (console = $2 OR $2 IS NULL)
+        r#"SELECT id, title, realname, image_path, console, category, region, release_year, serial, languages, "versions_count!" FROM (
+             SELECT DISTINCT ON (console, title) id, title, realname, image_path, console, category, region, release_year, serial, languages,
+             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as "versions_count!"
+             FROM roms
+             WHERE (category = $1 OR $1 IS NULL)
+             AND (console = $2 OR $2 IS NULL)
+             ORDER BY console, title, region NULLS LAST
+         ) sub
          ORDER BY title ASC
-         LIMIT $3 OFFSET $4",
+         LIMIT $3 OFFSET $4"#,
         category,
         console,
         final_limit,
@@ -65,7 +73,10 @@ pub async fn get_rom_list(
     })?;
 
     for rom in &mut roms {
-        rom.image_path = format!("{}.webp", rom.image_path.replace("/covers/", "/covers_small/"));
+        rom.image_path = format!(
+            "{}.webp",
+            rom.image_path.replace("/covers/", "/covers_small/")
+        );
     }
 
     Ok(V1ApiResponse(roms))
@@ -83,14 +94,19 @@ pub async fn get_search_overview(
 
     let mut most_played = sqlx::query_as!(
         V1RomListResponse,
-        r#"SELECT r.id, r.title, r.image_path, r.console, r.category, r.region, r.release_year, r.serial, r.languages
-         FROM roms r
-         LEFT JOIN (
-             SELECT rom_id, SUM(play_count) as total_play_count
-             FROM user_roms
-             GROUP BY rom_id
-         ) ur ON r.id = ur.rom_id
-         ORDER BY COALESCE(ur.total_play_count, 0) DESC, r.title ASC
+        r#"SELECT id, title, realname, image_path, console, category, region, release_year, serial, languages, "versions_count!" FROM (
+             SELECT DISTINCT ON (r.console, r.title) r.id, r.title, r.realname, r.image_path, r.console, r.category, r.region, r.release_year, r.serial, r.languages,
+             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!",
+             COALESCE(ur.total_play_count, 0) as total_play_count
+             FROM roms r
+             LEFT JOIN (
+                 SELECT rom_id, SUM(play_count) as total_play_count
+                 FROM user_roms
+                 GROUP BY rom_id
+             ) ur ON r.id = ur.rom_id
+             ORDER BY r.console, r.title, r.region NULLS LAST
+         ) sub
+         ORDER BY total_play_count DESC, title ASC
          LIMIT 50"#
     )
     .fetch_all(&*SQL)
@@ -99,9 +115,12 @@ pub async fn get_search_overview(
         error!("Failed to fetch most played: {:?}", e);
         V1ApiError::InternalError
     })?;
-    
+
     for rom in &mut most_played {
-        rom.image_path = format!("{}.webp", rom.image_path.replace("/covers/", "/covers_small/"));
+        rom.image_path = format!(
+            "{}.webp",
+            rom.image_path.replace("/covers/", "/covers_small/")
+        );
     }
 
     if !most_played.is_empty() {
@@ -110,9 +129,15 @@ pub async fn get_search_overview(
 
     let mut recently_added = sqlx::query_as!(
         V1RomListResponse,
-        "SELECT id, title, image_path, console, category, region, release_year, serial, languages FROM roms
+        r#"SELECT id, title, realname, image_path, console, category, region, release_year, serial, languages, "versions_count!" FROM (
+             SELECT DISTINCT ON (console, title) id, title, realname, image_path, console, category, region, release_year, serial, languages,
+             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as "versions_count!",
+             created_at
+             FROM roms
+             ORDER BY console, title, region NULLS LAST
+         ) sub
          ORDER BY created_at DESC NULLS LAST
-         LIMIT 50"
+         LIMIT 50"#
     )
     .fetch_all(&*SQL)
     .await
@@ -120,9 +145,12 @@ pub async fn get_search_overview(
         error!("Failed to fetch recently added: {:?}", e);
         V1ApiError::InternalError
     })?;
-    
+
     for rom in &mut recently_added {
-        rom.image_path = format!("{}.webp", rom.image_path.replace("/covers/", "/covers_small/"));
+        rom.image_path = format!(
+            "{}.webp",
+            rom.image_path.replace("/covers/", "/covers_small/")
+        );
     }
 
     if !recently_added.is_empty() {
@@ -143,10 +171,15 @@ pub async fn get_search_overview(
         let category = record.category;
         let mut cat_roms = sqlx::query_as!(
             V1RomListResponse,
-            r#"SELECT id, title, image_path, console, category, region, release_year, serial, languages FROM roms
+            r#"SELECT id, title, realname, image_path, console, category, region, release_year, serial, languages, "versions_count!" FROM (
+                 SELECT DISTINCT ON (console, title) id, title, realname, image_path, console, category, region, release_year, serial, languages,
+                 (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as "versions_count!"
+                 FROM roms
                  WHERE category = $1
-                 ORDER BY title ASC
-                 LIMIT 50"#,
+                 ORDER BY console, title, region NULLS LAST
+             ) sub
+             ORDER BY title ASC
+             LIMIT 50"#,
             category
         )
         .fetch_all(&*SQL)
@@ -157,7 +190,10 @@ pub async fn get_search_overview(
         })?;
 
         for rom in &mut cat_roms {
-            rom.image_path = format!("{}.webp", rom.image_path.replace("/covers/", "/covers_small/"));
+            rom.image_path = format!(
+                "{}.webp",
+                rom.image_path.replace("/covers/", "/covers_small/")
+            );
         }
 
         if !cat_roms.is_empty() {
@@ -185,6 +221,7 @@ pub struct V1RomFullResponse {
     pub release_year: Option<i32>,
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
     pub languages: Option<String>,
+    pub versions_count: i64,
 }
 impl V1ApiResponseTrait for V1RomFullResponse {}
 
@@ -193,7 +230,13 @@ pub async fn get_rom_single(
     id: &str,
     _user: AuthenticatedUser,
 ) -> V1ApiResponseType<V1RomFullResponse> {
-    let rom = sqlx::query_as!(V1RomFullResponse, "SELECT * FROM roms WHERE id = $1", id)
+    let rom = sqlx::query_as!(
+        V1RomFullResponse,
+        r#"SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, r.rom_path, r.image_path, r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,
+            (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!"
+           FROM roms r WHERE r.id = $1"#, 
+        id
+    )
         .fetch_optional(&*SQL)
         .await
         .map_err(|e| {
@@ -219,13 +262,18 @@ pub async fn search_roms(
 
     let mut results = sqlx::query_as!(
         V1RomListResponse,
-        r#"SELECT id, title, image_path, console, category, region, release_year, serial, languages FROM roms
-         WHERE (
-             title ILIKE '%' || $1 || '%'
-             OR serial ILIKE $1 || '%'
-         )
-         AND (category = $2 OR $2 IS NULL)
-         AND (console = $3 OR $3 IS NULL)
+        r#"SELECT id, title, realname, image_path, console, category, region, release_year, serial, languages, "versions_count!" FROM (
+             SELECT DISTINCT ON (console, title) id, title, realname, image_path, console, category, region, release_year, serial, languages,
+             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as "versions_count!"
+             FROM roms
+             WHERE (
+                 title ILIKE '%' || $1 || '%'
+                 OR serial ILIKE $1 || '%'
+             )
+             AND (category = $2 OR $2 IS NULL)
+             AND (console = $3 OR $3 IS NULL)
+             ORDER BY console, title, region NULLS LAST
+         ) sub
          ORDER BY
              CASE WHEN serial ILIKE $1 THEN 0 ELSE 1 END,
              title ASC
@@ -244,10 +292,49 @@ pub async fn search_roms(
     })?;
 
     for rom in &mut results {
-        rom.image_path = format!("{}.webp", rom.image_path.replace("/covers/", "/covers_small/"));
+        rom.image_path = format!(
+            "{}.webp",
+            rom.image_path.replace("/covers/", "/covers_small/")
+        );
     }
 
     Ok(V1ApiResponse(results))
+}
+
+#[get("/api/v1/roms/<id>/versions")]
+pub async fn get_rom_versions(
+    id: String,
+    _user: AuthenticatedUser,
+) -> V1ApiResponseType<Vec<V1RomListResponse>> {
+    let base_rom = sqlx::query!("SELECT title, console FROM roms WHERE id = $1", id)
+        .fetch_optional(&*SQL)
+        .await
+        .map_err(|_| V1ApiError::InternalError)?
+        .ok_or(V1ApiError::NotFound)?;
+
+    let mut versions = sqlx::query_as!(
+        V1RomListResponse,
+        r#"SELECT id, title, realname, image_path, console, category, region, release_year, serial, languages,
+           1::bigint as "versions_count!"
+           FROM roms WHERE title = $1 AND console = $2 ORDER BY region NULLS LAST"#,
+        base_rom.title,
+        base_rom.console
+    )
+    .fetch_all(&*SQL)
+    .await
+    .map_err(|e| {
+        error!("{:?}", e);
+        V1ApiError::InternalError
+    })?;
+
+    for rom in &mut versions {
+        rom.image_path = format!(
+            "{}.webp",
+            rom.image_path.replace("/covers/", "/covers_small/")
+        );
+    }
+
+    Ok(V1ApiResponse(versions))
 }
 
 #[derive(FromForm)]
@@ -624,11 +711,13 @@ pub struct V1UserLibraryResponse {
     pub id: String,
     pub rom_id: String,
     pub title: String,
+    pub realname: Option<String>,
     pub image_path: String,
     pub console: String,
     pub region: Option<String>,
     pub play_count: i32,
     pub last_played: Option<chrono::DateTime<chrono::Utc>>,
+    pub versions_count: i64,
 }
 impl V1ApiResponseTrait for Vec<V1UserLibraryResponse> {}
 
@@ -637,11 +726,15 @@ pub async fn get_user_library(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<Vec<V1UserLibraryResponse>> {
     let rows = sqlx::query!(
-        r#"SELECT ur.id as "ur_id!", ur.rom_id, r.title, r.image_path, r.console, ur.play_count, ur.last_played, r.region
-         FROM user_roms ur
-         INNER JOIN roms r ON ur.rom_id = r.id
-         WHERE ur.user_id = $1
-         ORDER BY ur.last_played DESC NULLS LAST"#,
+        r#"SELECT id as "ur_id!", rom_id, title, realname, image_path, console, play_count, last_played, region, "versions_count!" FROM (
+             SELECT DISTINCT ON (r.console, r.title) ur.id, ur.rom_id, r.title, r.realname, r.image_path, r.console, ur.play_count, ur.last_played, r.region,
+             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!"
+             FROM user_roms ur
+             INNER JOIN roms r ON ur.rom_id = r.id
+             WHERE ur.user_id = $1
+             ORDER BY r.console, r.title, r.region NULLS LAST
+         ) sub
+         ORDER BY last_played DESC NULLS LAST"#,
         user.id.value()
     )
     .fetch_all(&*SQL)
@@ -658,10 +751,15 @@ pub async fn get_user_library(
             region: r.region,
             rom_id: r.rom_id,
             title: r.title,
-            image_path: format!("{}.webp", r.image_path.replace("/covers/", "/covers_small/")),
+            realname: r.realname,
+            image_path: format!(
+                "{}.webp",
+                r.image_path.replace("/covers/", "/covers_small/")
+            ),
             console: r.console,
             play_count: r.play_count,
             last_played: r.last_played,
+            versions_count: r.versions_count,
         })
         .collect();
 

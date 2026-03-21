@@ -32,6 +32,7 @@ pub struct V1EmulatorResponse {
     pub binary_path: String,
     pub binary_name: Option<String>,
     pub save_path: Option<String>,
+    pub save_extensions: Vec<String>,
     pub md5_hash: Option<String>,
     pub config_files: Vec<String>,
     pub zipped: bool,
@@ -59,6 +60,7 @@ pub async fn get_emulators_for_platform(
             binary_path,
             binary_name,
             save_path,
+            save_extensions as "save_extensions!",
             md5_hash,
             config_files as "config_files!",
             zipped as "zipped!",
@@ -100,6 +102,7 @@ pub async fn get_all_emulators(
             binary_path,
             binary_name,
             save_path,
+            save_extensions as "save_extensions!",
             md5_hash,
             config_files as "config_files!",
             zipped as "zipped!",
@@ -127,6 +130,7 @@ pub struct V1EmulatorUploadRequest<'r> {
     pub run_command: String,
     pub binary_name: Option<String>,
     pub save_path: String,
+    pub save_extensions: Vec<String>,
     pub binary_file: TempFile<'r>,
     pub config_files: Vec<String>,
     pub zipped: bool,
@@ -190,8 +194,8 @@ pub async fn emulator_upload(
     let id = next_id();
 
     sqlx::query!(
-        "INSERT INTO emulators (id, name, consoles, platform, run_command, binary_name, save_path, binary_path, md5_hash, config_files, zipped, file_size)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+        "INSERT INTO emulators (id, name, consoles, platform, run_command, binary_name, save_path, save_extensions, binary_path, md5_hash, config_files, zipped, file_size)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
         id,
         data.name,
         &data.consoles,
@@ -199,6 +203,7 @@ pub async fn emulator_upload(
         data.run_command,
         data.binary_name,
         data.save_path,
+        &data.save_extensions,
         binary_path,
         md5,
         &data.config_files,
@@ -223,6 +228,7 @@ pub struct V1EmulatorUpdateRequest {
     pub run_command: String,
     pub binary_name: Option<String>,
     pub save_path: String,
+    pub save_extensions: Vec<String>,
     pub config_files: Vec<String>,
     pub zipped: bool,
 }
@@ -238,13 +244,14 @@ pub async fn update_emulator(
     }
 
     sqlx::query!(
-        "UPDATE emulators SET name = $1, consoles = $2, platform = $3, run_command = $4, binary_name = $5, save_path = $6, config_files = $7, zipped = $8 WHERE id = $9",
+        "UPDATE emulators SET name = $1, consoles = $2, platform = $3, run_command = $4, binary_name = $5, save_path = $6, save_extensions = $7, config_files = $8, zipped = $9 WHERE id = $10",
         data.name,
         &data.consoles,
         data.platform,
         data.run_command,
         data.binary_name,
         data.save_path,
+        &data.save_extensions,
         &data.config_files,
         data.zipped,
         id

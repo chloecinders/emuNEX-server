@@ -26,6 +26,7 @@ class EmunexEmulatorsManagePage extends LitElement {
         _editingEmulator: { type: Object, state: true },
         _editTags: { type: Array, state: true },
         _editConsoles: { type: Array, state: true },
+        _editSaveExtensions: { type: Array, state: true },
         _editFileName: { type: String, state: true },
         _dragover: { type: Boolean, state: true },
     };
@@ -97,6 +98,7 @@ class EmunexEmulatorsManagePage extends LitElement {
         this._editingEmulator = null;
         this._editTags = [];
         this._editConsoles = [];
+        this._editSaveExtensions = [];
         this._editFileName = "";
         this._dragover = false;
         this._searchTimeout = null;
@@ -339,6 +341,28 @@ class EmunexEmulatorsManagePage extends LitElement {
                                 </div>
                             </div>
 
+                            <div class="form-group">
+                                <label>Save File Extensions (press Enter to add, e.g. <code>.sra</code>, <code>.srm</code>)</label>
+                                <div class="tag-system">
+                                    ${this._editSaveExtensions.map(
+                                        (t) =>
+                                            html`<div class="tag"
+                                                >${t}
+                                                <span class="tag-remove" @click=${() => this._removeSaveExt(t)}
+                                                    >×</span
+                                                ></div
+                                            >`,
+                                    )}
+                                    <div class="tag-input-wrapper">
+                                        <input
+                                            type="text"
+                                            placeholder=".sra"
+                                            @keydown=${(e) => this._handleSaveExtKeydown(e)}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="checkbox-row">
                                 <input type="checkbox" id="edit-zipped" .checked=${this._editingEmulator.zipped} />
                                 <label>Executable is zipped (contains DLLs/assets)</label>
@@ -402,6 +426,19 @@ class EmunexEmulatorsManagePage extends LitElement {
         this._editTags = this._editTags.filter((tag) => tag !== t);
     }
 
+    _handleSaveExtKeydown(e) {
+        if (e.key === "Enter" && e.target.value.trim()) {
+            e.preventDefault();
+            const val = e.target.value.trim();
+            if (!this._editSaveExtensions.includes(val)) this._editSaveExtensions = [...this._editSaveExtensions, val];
+            e.target.value = "";
+        }
+    }
+
+    _removeSaveExt(t) {
+        this._editSaveExtensions = this._editSaveExtensions.filter((ext) => ext !== t);
+    }
+
     _toggleConsole(name, checked) {
         if (checked) {
             if (!this._editConsoles.includes(name)) this._editConsoles = [...this._editConsoles, name];
@@ -443,6 +480,7 @@ class EmunexEmulatorsManagePage extends LitElement {
         this._editingEmulator = { ...emu };
         this._editTags = [...(emu.config_files || [])];
         this._editConsoles = [...(emu.consoles || [])];
+        this._editSaveExtensions = [...(emu.save_extensions || [])];
         this._editFileName = "";
         this._editModalOpen = true;
 
@@ -469,6 +507,7 @@ class EmunexEmulatorsManagePage extends LitElement {
             run_command: root.querySelector("#edit-command").value,
             binary_name: root.querySelector("#edit-binary-name").value,
             save_path: root.querySelector("#edit-save-path").value,
+            save_extensions: this._editSaveExtensions,
             config_files: this._editTags,
             zipped: root.querySelector("#edit-zipped").checked,
         };
