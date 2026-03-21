@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM roms WHERE id = $1",
+  "query": "SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, r.rom_path, r.image_path, r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,\n            (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as \"versions_count!\"\n           FROM roms r WHERE r.id = $1",
   "describe": {
     "columns": [
       {
@@ -15,68 +15,73 @@
       },
       {
         "ordinal": 2,
-        "name": "console",
+        "name": "realname",
         "type_info": "Varchar"
       },
       {
         "ordinal": 3,
-        "name": "region",
+        "name": "console",
         "type_info": "Varchar"
       },
       {
         "ordinal": 4,
-        "name": "category",
+        "name": "region",
         "type_info": "Varchar"
       },
       {
         "ordinal": 5,
+        "name": "category",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
         "name": "serial",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "rom_path",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "image_path",
         "type_info": "Text"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "file_extension",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "file_size_bytes",
         "type_info": "Int8"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "md5_hash",
         "type_info": "Bpchar"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "release_year",
         "type_info": "Int4"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "languages",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
-        "name": "realname",
-        "type_info": "Varchar"
+        "ordinal": 15,
+        "name": "versions_count!",
+        "type_info": "Int8"
       }
     ],
     "parameters": {
@@ -87,11 +92,12 @@
     "nullable": [
       false,
       false,
-      false,
       true,
       false,
       true,
       false,
+      true,
+      false,
       false,
       true,
       true,
@@ -99,8 +105,8 @@
       true,
       true,
       true,
-      true
+      null
     ]
   },
-  "hash": "c47c5e85c0140223dcfc7949fb9ca745df65bf947b2768b052446704409b7633"
+  "hash": "444c0f2644d9c8ca3643fe32e2b1b51d6ebfb46b1923aba1591d39f54cc777f7"
 }

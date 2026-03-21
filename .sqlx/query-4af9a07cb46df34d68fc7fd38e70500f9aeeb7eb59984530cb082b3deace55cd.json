@@ -1,0 +1,82 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, title, realname, image_path, console, category, region, release_year, serial, languages, \"versions_count!\" FROM (\n                 SELECT DISTINCT ON (console, title) id, title, realname, image_path, console, category, region, release_year, serial, languages,\n                 (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as \"versions_count!\"\n                 FROM roms\n                 WHERE category = $1\n                 ORDER BY console, title, region NULLS LAST\n             ) sub\n             ORDER BY title ASC\n             LIMIT 50",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "realname",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "image_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "console",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "category",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "region",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "release_year",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "serial",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "languages",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "versions_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "4af9a07cb46df34d68fc7fd38e70500f9aeeb7eb59984530cb082b3deace55cd"
+}
