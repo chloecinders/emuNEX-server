@@ -16,7 +16,12 @@ pub async fn storage(file: std::path::PathBuf) -> Result<Vec<u8>, Status> {
     let is_large_cover = key.starts_with("/covers/");
     let is_icon = key.starts_with("/icons/");
 
-    if (is_small_cover || is_large_cover || is_icon) && !key.ends_with(".png") && !key.ends_with(".webp") && !key.ends_with(".jpg") && !key.ends_with(".jpeg") {
+    if (is_small_cover || is_large_cover || is_icon)
+        && !key.ends_with(".png")
+        && !key.ends_with(".webp")
+        && !key.ends_with(".jpg")
+        && !key.ends_with(".jpeg")
+    {
         return Err(Status::BadRequest);
     }
 
@@ -33,7 +38,7 @@ pub async fn storage(file: std::path::PathBuf) -> Result<Vec<u8>, Status> {
                     } else if is_icon {
                         img.resize_to_fill(256, 256, image::imageops::FilterType::Lanczos3)
                     } else {
-                        img // Large cover, no resizing needed
+                        img
                     };
 
                     let mut buf = std::io::Cursor::new(Vec::new());

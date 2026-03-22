@@ -6,7 +6,7 @@ use std::io::Cursor;
 pub async fn migrate_covers() {
     println!("Checking if any covers need migration...");
 
-    let roms = match sqlx::query!("SELECT id, image_hash FROM roms")
+    let roms = match sqlx::query!("SELECT id, image_hash, rom_path FROM roms")
         .fetch_all(&*SQL)
         .await
     {
@@ -82,7 +82,19 @@ pub async fn migrate_covers() {
                 }
             }
             Err(e) => {
-                println!("Failed to download cover for ROM {}: {}", rom.id, e);
+                println!(
+                    "Failed to download cover for ROM {}, deleting ROM: {}",
+                    rom.id, e
+                );
+                let _ = crate::utils::s3::delete_object(&rom.rom_path).await;
+                if let Err(db_err) = sqlx::query!("DELETE FROM roms WHERE id = $1", rom.id)
+                    .execute(&*SQL)
+                    .await
+                {
+                    println!("Failed to delete ROM {} from DB: {}", rom.id, db_err);
+                } else {
+                    println!("Deleted ROM for missing image {}", rom.id);
+                }
             }
         }
     }
