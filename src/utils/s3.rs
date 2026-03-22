@@ -31,6 +31,7 @@ pub fn create_bucket() -> Box<Bucket> {
 }
 
 pub async fn upload_object(key: &str, body: &[u8]) -> Result<(), String> {
+    let key = key.strip_prefix('/').unwrap_or(key);
     let bucket = &*S3;
     bucket.put_object(key, body).await.map_err(|e| {
         error!("S3 upload error for key {}: {:?}", key, e);
@@ -40,6 +41,7 @@ pub async fn upload_object(key: &str, body: &[u8]) -> Result<(), String> {
 }
 
 pub async fn download_object(key: &str) -> Result<Vec<u8>, String> {
+    let key = key.strip_prefix('/').unwrap_or(key);
     let bucket = &*S3;
     let response = bucket.get_object(key).await.map_err(|e| {
         error!("S3 download error for key {}: {:?}", key, e);
@@ -49,6 +51,7 @@ pub async fn download_object(key: &str) -> Result<Vec<u8>, String> {
 }
 
 pub async fn delete_object(key: &str) -> Result<(), String> {
+    let key = key.strip_prefix('/').unwrap_or(key);
     let bucket = &*S3;
     bucket.delete_object(key).await.map_err(|e| {
         error!("S3 delete error for key {}: {:?}", key, e);
