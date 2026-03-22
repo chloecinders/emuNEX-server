@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id as \"ur_id!\", rom_id, title, realname, image_path, console, play_count, last_played, region, \"versions_count!\" FROM (\n             SELECT DISTINCT ON (r.console, r.title) ur.id, ur.rom_id, r.title, r.realname, r.image_path, r.console, ur.play_count, ur.last_played, r.region,\n             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as \"versions_count!\"\n             FROM user_roms ur\n             INNER JOIN roms r ON ur.rom_id = r.id\n             WHERE ur.user_id = $1\n             ORDER BY r.console, r.title, r.region NULLS LAST\n         ) sub\n         ORDER BY last_played DESC NULLS LAST",
+  "query": "SELECT id as \"ur_id!\", rom_id, title, realname, image_hash, console, play_count, last_played, region, \"versions_count!\" FROM (\n             SELECT DISTINCT ON (r.console, r.title) ur.id, ur.rom_id, r.title, r.realname, r.image_hash, r.console, ur.play_count, ur.last_played, r.region,\n             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as \"versions_count!\"\n             FROM user_roms ur\n             INNER JOIN roms r ON ur.rom_id = r.id\n             WHERE ur.user_id = $1\n             ORDER BY r.console, r.title, r.region NULLS LAST\n         ) sub\n         ORDER BY last_played DESC NULLS LAST",
   "describe": {
     "columns": [
       {
@@ -25,7 +25,7 @@
       },
       {
         "ordinal": 4,
-        "name": "image_path",
+        "name": "image_hash",
         "type_info": "Text"
       },
       {
@@ -72,5 +72,5 @@
       null
     ]
   },
-  "hash": "17d200b285242bc74b5a84056451702de6668511aa6c8ad8044c02788dbfe8de"
+  "hash": "45997b52d4ff321904ad64290db9d88875f672dccfd5657d0dfc932958be343a"
 }

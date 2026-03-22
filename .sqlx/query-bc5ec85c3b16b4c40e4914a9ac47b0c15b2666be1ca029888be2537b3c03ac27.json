@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, title, realname, image_path, console, category, region, release_year, serial, languages,\n           1::bigint as \"versions_count!\"\n           FROM roms WHERE title = $1 AND console = $2 ORDER BY region NULLS LAST",
+  "query": "SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as \"image_path!\", console, category, release_year, region, serial, languages, \"versions_count!\" FROM (\n                 SELECT DISTINCT ON (r.console, r.title) r.id, r.title, r.realname, r.image_hash, r.console, r.category, r.release_year, r.region, r.serial, r.languages, sr.sort_order,\n                 (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as \"versions_count!\"\n                 FROM roms r\n                 JOIN shelf_roms sr ON r.id = sr.rom_id\n                 WHERE sr.shelf_id = $1\n                 ORDER BY r.console, r.title, r.region NULLS LAST\n             ) sub\n             ORDER BY sort_order ASC, title ASC",
   "describe": {
     "columns": [
       {
@@ -20,7 +20,7 @@
       },
       {
         "ordinal": 3,
-        "name": "image_path",
+        "name": "image_path!",
         "type_info": "Text"
       },
       {
@@ -35,13 +35,13 @@
       },
       {
         "ordinal": 6,
-        "name": "region",
-        "type_info": "Varchar"
+        "name": "release_year",
+        "type_info": "Int4"
       },
       {
         "ordinal": 7,
-        "name": "release_year",
-        "type_info": "Int4"
+        "name": "region",
+        "type_info": "Varchar"
       },
       {
         "ordinal": 8,
@@ -61,15 +61,14 @@
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Text"
+        "Int8"
       ]
     },
     "nullable": [
       false,
       false,
       true,
-      false,
+      null,
       false,
       false,
       true,
@@ -79,5 +78,5 @@
       null
     ]
   },
-  "hash": "a868756bdbe6c3f20f0acfd907d74632bf50da4bf4d46ead6e247a9b5cd8c838"
+  "hash": "bc5ec85c3b16b4c40e4914a9ac47b0c15b2666be1ca029888be2537b3c03ac27"
 }

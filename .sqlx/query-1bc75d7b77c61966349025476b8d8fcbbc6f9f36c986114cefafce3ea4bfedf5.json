@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, title, realname, image_path, console, category, region, release_year, serial, languages, \"versions_count!\" FROM (\n                 SELECT DISTINCT ON (console, title) id, title, realname, image_path, console, category, region, release_year, serial, languages,\n                 (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as \"versions_count!\"\n                 FROM roms\n                 WHERE category = $1\n                 ORDER BY console, title, region NULLS LAST\n             ) sub\n             ORDER BY title ASC\n             LIMIT 50",
+  "query": "SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as \"image_path!\", console, category, region, release_year, serial, languages, \"versions_count!\" FROM (\n             SELECT DISTINCT ON (console, title) id, title, realname, image_hash, console, category, region, release_year, serial, languages,\n             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as \"versions_count!\"\n             FROM roms\n             WHERE (category = $1 OR $1 IS NULL)\n             AND (console = $2 OR $2 IS NULL)\n             ORDER BY console, title, region NULLS LAST\n         ) sub\n         ORDER BY title ASC\n         LIMIT $3 OFFSET $4",
   "describe": {
     "columns": [
       {
@@ -20,7 +20,7 @@
       },
       {
         "ordinal": 3,
-        "name": "image_path",
+        "name": "image_path!",
         "type_info": "Text"
       },
       {
@@ -61,14 +61,17 @@
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
       ]
     },
     "nullable": [
       false,
       false,
       true,
-      false,
+      null,
       false,
       false,
       true,
@@ -78,5 +81,5 @@
       null
     ]
   },
-  "hash": "4af9a07cb46df34d68fc7fd38e70500f9aeeb7eb59984530cb082b3deace55cd"
+  "hash": "1bc75d7b77c61966349025476b8d8fcbbc6f9f36c986114cefafce3ea4bfedf5"
 }
