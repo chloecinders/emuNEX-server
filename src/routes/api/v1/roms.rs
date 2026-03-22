@@ -1,5 +1,9 @@
-use std::{io::Read, path::Path};
+use std::{
+    io::{Cursor, Read},
+    path::Path,
+};
 
+use image::ImageFormat;
 use rocket::{
     delete,
     form::{Form, FromForm},
@@ -48,10 +52,10 @@ pub async fn get_rom_list(
     let final_limit = limit.unwrap_or(50).min(50);
     let final_offset = offset.unwrap_or(0);
 
-    let mut roms = sqlx::query_as!(
+    let roms = sqlx::query_as!(
         V1RomListResponse,
-        r#"SELECT id, title, realname, image_path, console, category, region, release_year, serial, languages, "versions_count!" FROM (
-             SELECT DISTINCT ON (console, title) id, title, realname, image_path, console, category, region, release_year, serial, languages,
+        r#"SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, "versions_count!" FROM (
+             SELECT DISTINCT ON (console, title) id, title, realname, image_hash, console, category, region, release_year, serial, languages,
              (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as "versions_count!"
              FROM roms
              WHERE (category = $1 OR $1 IS NULL)
@@ -72,13 +76,6 @@ pub async fn get_rom_list(
         V1ApiError::InternalError
     })?;
 
-    for rom in &mut roms {
-        rom.image_path = format!(
-            "{}.webp",
-            rom.image_path.replace("/covers/", "/covers_small/")
-        );
-    }
-
     Ok(V1ApiResponse(roms))
 }
 
@@ -92,10 +89,10 @@ pub async fn get_search_overview(
 ) -> V1ApiResponseType<V1SearchOverviewResponse> {
     let mut overview = std::collections::HashMap::new();
 
-    let mut most_played = sqlx::query_as!(
+    let most_played = sqlx::query_as!(
         V1RomListResponse,
-        r#"SELECT id, title, realname, image_path, console, category, region, release_year, serial, languages, "versions_count!" FROM (
-             SELECT DISTINCT ON (r.console, r.title) r.id, r.title, r.realname, r.image_path, r.console, r.category, r.region, r.release_year, r.serial, r.languages,
+        r#"SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, "versions_count!" FROM (
+             SELECT DISTINCT ON (r.console, r.title) r.id, r.title, r.realname, r.image_hash, r.console, r.category, r.region, r.release_year, r.serial, r.languages,
              (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!",
              COALESCE(ur.total_play_count, 0) as total_play_count
              FROM roms r
@@ -116,21 +113,14 @@ pub async fn get_search_overview(
         V1ApiError::InternalError
     })?;
 
-    for rom in &mut most_played {
-        rom.image_path = format!(
-            "{}.webp",
-            rom.image_path.replace("/covers/", "/covers_small/")
-        );
-    }
-
     if !most_played.is_empty() {
         overview.insert("Most Played".to_string(), most_played);
     }
 
-    let mut recently_added = sqlx::query_as!(
+    let recently_added = sqlx::query_as!(
         V1RomListResponse,
-        r#"SELECT id, title, realname, image_path, console, category, region, release_year, serial, languages, "versions_count!" FROM (
-             SELECT DISTINCT ON (console, title) id, title, realname, image_path, console, category, region, release_year, serial, languages,
+        r#"SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, "versions_count!" FROM (
+             SELECT DISTINCT ON (console, title) id, title, realname, image_hash, console, category, region, release_year, serial, languages,
              (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as "versions_count!",
              created_at
              FROM roms
@@ -145,13 +135,6 @@ pub async fn get_search_overview(
         error!("Failed to fetch recently added: {:?}", e);
         V1ApiError::InternalError
     })?;
-
-    for rom in &mut recently_added {
-        rom.image_path = format!(
-            "{}.webp",
-            rom.image_path.replace("/covers/", "/covers_small/")
-        );
-    }
 
     if !recently_added.is_empty() {
         overview.insert("Recently Added".to_string(), recently_added);
@@ -169,10 +152,10 @@ pub async fn get_search_overview(
 
     for record in categories {
         let category = record.category;
-        let mut cat_roms = sqlx::query_as!(
+        let cat_roms = sqlx::query_as!(
             V1RomListResponse,
-            r#"SELECT id, title, realname, image_path, console, category, region, release_year, serial, languages, "versions_count!" FROM (
-                 SELECT DISTINCT ON (console, title) id, title, realname, image_path, console, category, region, release_year, serial, languages,
+            r#"SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, "versions_count!" FROM (
+                 SELECT DISTINCT ON (console, title) id, title, realname, image_hash, console, category, region, release_year, serial, languages,
                  (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as "versions_count!"
                  FROM roms
                  WHERE category = $1
@@ -188,13 +171,6 @@ pub async fn get_search_overview(
             error!("Failed to fetch roms for category {}: {:?}", category, e);
             V1ApiError::InternalError
         })?;
-
-        for rom in &mut cat_roms {
-            rom.image_path = format!(
-                "{}.webp",
-                rom.image_path.replace("/covers/", "/covers_small/")
-            );
-        }
 
         if !cat_roms.is_empty() {
             overview.insert(category, cat_roms);
@@ -232,7 +208,7 @@ pub async fn get_rom_single(
 ) -> V1ApiResponseType<V1RomFullResponse> {
     let rom = sqlx::query_as!(
         V1RomFullResponse,
-        r#"SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, r.rom_path, r.image_path, r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,
+        r#"SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, r.rom_path, '/covers/' || r.image_hash || '.webp' as "image_path!", r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,
             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!"
            FROM roms r WHERE r.id = $1"#, 
         id
@@ -260,10 +236,10 @@ pub async fn search_roms(
     let final_limit = limit.unwrap_or(50).min(50);
     let final_offset = offset.unwrap_or(0);
 
-    let mut results = sqlx::query_as!(
+    let results = sqlx::query_as!(
         V1RomListResponse,
-        r#"SELECT id, title, realname, image_path, console, category, region, release_year, serial, languages, "versions_count!" FROM (
-             SELECT DISTINCT ON (console, title) id, title, realname, image_path, console, category, region, release_year, serial, languages,
+        r#"SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, "versions_count!" FROM (
+             SELECT DISTINCT ON (console, title) id, title, realname, image_hash, console, category, region, release_year, serial, languages,
              (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as "versions_count!"
              FROM roms
              WHERE (
@@ -291,13 +267,6 @@ pub async fn search_roms(
         V1ApiError::InternalError
     })?;
 
-    for rom in &mut results {
-        rom.image_path = format!(
-            "{}.webp",
-            rom.image_path.replace("/covers/", "/covers_small/")
-        );
-    }
-
     Ok(V1ApiResponse(results))
 }
 
@@ -312,9 +281,9 @@ pub async fn get_rom_versions(
         .map_err(|_| V1ApiError::InternalError)?
         .ok_or(V1ApiError::NotFound)?;
 
-    let mut versions = sqlx::query_as!(
+    let versions = sqlx::query_as!(
         V1RomListResponse,
-        r#"SELECT id, title, realname, image_path, console, category, region, release_year, serial, languages,
+        r#"SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages,
            1::bigint as "versions_count!"
            FROM roms WHERE title = $1 AND console = $2 ORDER BY region NULLS LAST"#,
         base_rom.title,
@@ -326,13 +295,6 @@ pub async fn get_rom_versions(
         error!("{:?}", e);
         V1ApiError::InternalError
     })?;
-
-    for rom in &mut versions {
-        rom.image_path = format!(
-            "{}.webp",
-            rom.image_path.replace("/covers/", "/covers_small/")
-        );
-    }
 
     Ok(V1ApiResponse(versions))
 }
@@ -371,17 +333,6 @@ pub async fn upload_rom(
         .and_then(|ext| ext.to_str())
         .unwrap_or("bin");
 
-    let img_filename = data
-        .image_file
-        .raw_name()
-        .map(|n| n.dangerous_unsafe_unsanitized_raw())
-        .unwrap_or("cover.jpg".into());
-
-    let img_ext = Path::new(img_filename.as_str())
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .unwrap_or("jpg");
-
     let rom_bytes = tokio::fs::read(data.rom_file.path().unwrap())
         .await
         .map_err(|e| {
@@ -415,18 +366,31 @@ pub async fn upload_rom(
             V1ApiError::InternalError
         })?;
 
-    let img_md5 = compute_md5(&img_bytes);
-    let img_path = format!("/covers/{}/{}.{}", data.console, img_md5, img_ext);
-
-    upload_object(&img_path, &img_bytes).await.map_err(|e| {
-        error!("Failed to upload image to '{}': {:?}", img_path, e);
+    let img = image::load_from_memory(&img_bytes).map_err(|e| {
+        error!("Failed to load image: {}", e);
         V1ApiError::InternalError
     })?;
+    let mut buf = Cursor::new(Vec::new());
+    img.write_to(&mut buf, ImageFormat::WebP).map_err(|e| {
+        error!("Failed to encode WebP: {}", e);
+        V1ApiError::InternalError
+    })?;
+
+    let img_webp_bytes = buf.into_inner();
+    let img_hash = compute_md5(&img_webp_bytes);
+    let img_path = format!("/covers/{}.webp", img_hash);
+
+    upload_object(&img_path, &img_webp_bytes)
+        .await
+        .map_err(|e| {
+            error!("Failed to upload image to '{}': {:?}", img_path, e);
+            V1ApiError::InternalError
+        })?;
 
     let rom_id = crate::utils::snowflake::next_id();
 
     sqlx::query!(
-        "INSERT INTO roms (id, title, console, category, region, serial, release_year, rom_path, image_path, file_extension, md5_hash, file_size_bytes, languages)
+        "INSERT INTO roms (id, title, console, category, region, serial, release_year, rom_path, image_hash, file_extension, md5_hash, file_size_bytes, languages)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          ON CONFLICT (id) DO UPDATE SET
             title = EXCLUDED.title,
@@ -436,7 +400,7 @@ pub async fn upload_rom(
             serial = EXCLUDED.serial,
             release_year = EXCLUDED.release_year,
             rom_path = EXCLUDED.rom_path,
-            image_path = EXCLUDED.image_path,
+            image_hash = EXCLUDED.image_hash,
             file_extension = EXCLUDED.file_extension,
             md5_hash = EXCLUDED.md5_hash,
             file_size_bytes = EXCLUDED.file_size_bytes,
@@ -449,7 +413,7 @@ pub async fn upload_rom(
         data.serial,
         data.release_year,
         rom_path,
-        img_path,
+        img_hash,
         rom_ext,
         rom_md5,
         rom_bytes.len() as i64,
@@ -603,7 +567,7 @@ pub async fn update_rom_image(
         return Err(V1ApiError::NotAuthorized);
     }
 
-    let rom = sqlx::query!("SELECT image_path FROM roms WHERE id = $1", id)
+    let _rom = sqlx::query!("SELECT image_hash FROM roms WHERE id = $1", id)
         .fetch_optional(&*SQL)
         .await
         .map_err(|e| {
@@ -619,12 +583,39 @@ pub async fn update_rom_image(
             V1ApiError::InternalError
         })?;
 
-    upload_object(&rom.image_path, &img_bytes)
+    let img = image::load_from_memory(&img_bytes).map_err(|e| {
+        error!("Failed to load image: {}", e);
+        V1ApiError::InternalError
+    })?;
+
+    let mut buf = Cursor::new(Vec::new());
+    img.write_to(&mut buf, ImageFormat::WebP).map_err(|e| {
+        error!("Failed to encode WebP: {}", e);
+        V1ApiError::InternalError
+    })?;
+
+    let img_webp_bytes = buf.into_inner();
+    let img_hash = compute_md5(&img_webp_bytes);
+    let img_path = format!("/covers/{}.webp", img_hash);
+
+    upload_object(&img_path, &img_webp_bytes)
         .await
         .map_err(|e| {
             error!("Failed to upload image: {:?}", e);
             V1ApiError::InternalError
         })?;
+
+    sqlx::query!(
+        "UPDATE roms SET image_hash = $1 WHERE id = $2",
+        img_hash,
+        id
+    )
+    .execute(&*SQL)
+    .await
+    .map_err(|e| {
+        error!("Failed to update image path in DB: {:?}", e);
+        V1ApiError::InternalError
+    })?;
 
     Ok(V1ApiResponse(()))
 }
@@ -635,7 +626,7 @@ pub async fn delete_rom(id: String, user: AuthenticatedUser) -> V1ApiResponseTyp
         return Err(V1ApiError::NotAuthorized);
     }
 
-    let rom = sqlx::query!("SELECT rom_path, image_path FROM roms WHERE id = $1", id)
+    let rom = sqlx::query!("SELECT rom_path, image_hash FROM roms WHERE id = $1", id)
         .fetch_optional(&*SQL)
         .await
         .map_err(|e| {
@@ -645,7 +636,7 @@ pub async fn delete_rom(id: String, user: AuthenticatedUser) -> V1ApiResponseTyp
         .ok_or(V1ApiError::NotFound)?;
 
     let _ = crate::utils::s3::delete_object(&rom.rom_path).await;
-    let _ = crate::utils::s3::delete_object(&rom.image_path).await;
+    let _ = crate::utils::s3::delete_object(&format!("/covers/{}.webp", rom.image_hash)).await;
 
     sqlx::query!("DELETE FROM roms WHERE id = $1", id)
         .execute(&*SQL)
@@ -726,8 +717,8 @@ pub async fn get_user_library(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<Vec<V1UserLibraryResponse>> {
     let rows = sqlx::query!(
-        r#"SELECT id as "ur_id!", rom_id, title, realname, image_path, console, play_count, last_played, region, "versions_count!" FROM (
-             SELECT DISTINCT ON (r.console, r.title) ur.id, ur.rom_id, r.title, r.realname, r.image_path, r.console, ur.play_count, ur.last_played, r.region,
+        r#"SELECT id as "ur_id!", rom_id, title, realname, image_hash, console, play_count, last_played, region, "versions_count!" FROM (
+             SELECT DISTINCT ON (r.console, r.title) ur.id, ur.rom_id, r.title, r.realname, r.image_hash, r.console, ur.play_count, ur.last_played, r.region,
              (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!"
              FROM user_roms ur
              INNER JOIN roms r ON ur.rom_id = r.id
@@ -752,10 +743,7 @@ pub async fn get_user_library(
             rom_id: r.rom_id,
             title: r.title,
             realname: r.realname,
-            image_path: format!(
-                "{}.webp",
-                r.image_path.replace("/covers/", "/covers_small/")
-            ),
+            image_path: format!("/covers_small/{}.webp", r.image_hash),
             console: r.console,
             play_count: r.play_count,
             last_played: r.last_played,
@@ -872,38 +860,38 @@ pub async fn bulk_upload_roms(
     for (info, rom_bytes, cover_bytes) in entries {
         let title = info.title.clone().unwrap_or_else(|| "Unknown".into());
         let rom_md5 = compute_md5(&rom_bytes);
-        let img_md5 = compute_md5(&cover_bytes);
-
-        if let Some(expected_md5) = &info.md5 {
-            if rom_md5 != *expected_md5 {
-                error!(
-                    "MD5 mismatch for {}: expected {}, got {}",
-                    title, expected_md5, rom_md5
-                );
+        let img = match image::load_from_memory(&cover_bytes) {
+            Ok(i) => i,
+            Err(e) => {
+                error!("Failed to load image for {}: {}", title, e);
                 fail_count += 1;
                 continue;
             }
+        };
+        let mut buf = Cursor::new(Vec::new());
+        if let Err(e) = img.write_to(&mut buf, ImageFormat::WebP) {
+            error!("Failed to encode WebP for {}: {}", title, e);
+            fail_count += 1;
+            continue;
         }
+        let img_webp_bytes = buf.into_inner();
+        let img_hash = compute_md5(&img_webp_bytes);
 
         let console = info.console.clone().unwrap_or_else(|| "Unknown".into());
         let rom_ext = info
             .rom
-            .as_deref()
-            .and_then(|s| s.split('.').last())
+            .as_ref()
+            .and_then(|r| Path::new(r).extension())
+            .and_then(|e| e.to_str())
             .unwrap_or("bin");
-        let img_ext = info
-            .cover
-            .as_deref()
-            .and_then(|s| s.split('.').last())
-            .unwrap_or("jpg");
 
         let s3_rom = format!("/roms/{}/{}.{}", console, rom_md5, rom_ext);
-        let s3_img = format!("/covers/{}/{}.{}", console, img_md5, img_ext);
+        let s3_img = format!("/covers/{}.webp", img_hash);
 
         info!("Uploading files for: {}", title);
         if tokio::try_join!(
             upload_object(&s3_rom, &rom_bytes),
-            upload_object(&s3_img, &cover_bytes)
+            upload_object(&s3_img, &img_webp_bytes)
         )
         .is_err()
         {
@@ -924,10 +912,10 @@ pub async fn bulk_upload_roms(
 
         let rom_id = crate::utils::snowflake::next_id().to_string();
         let db_res = sqlx::query!(
-            "INSERT INTO roms (id, title, console, category, region, serial, release_year, rom_path, image_path, file_extension, md5_hash, file_size_bytes, languages)
+            "INSERT INTO roms (id, title, console, category, region, serial, release_year, rom_path, image_hash, file_extension, md5_hash, file_size_bytes, languages)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
              ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title",
-            rom_id, info.title, console, info.category, info.region, info.serial, info.year, s3_rom, s3_img, rom_ext, rom_md5, rom_bytes.len() as i64, info.languages
+            rom_id, info.title, console, info.category, info.region, info.serial, info.year, s3_rom, img_hash, rom_ext, rom_md5, rom_bytes.len() as i64, info.languages
         ).execute(&mut *tx).await;
 
         if db_res.is_ok() && tx.commit().await.is_ok() {

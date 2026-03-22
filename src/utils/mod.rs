@@ -8,3 +8,4 @@ pub mod s3;
 pub mod snowflake;
 pub mod id;
 pub mod rate_limit;
+pub mod migration;

@@ -34,10 +34,10 @@ pub async fn get_shelves(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1She
     let mut response = Vec::new();
 
     for shelf in shelves_records {
-        let mut games = sqlx::query_as!(
+        let games = sqlx::query_as!(
             V1RomListResponse,
-            r#"SELECT id, title, realname, image_path, console, category, release_year, region, serial, languages, "versions_count!" FROM (
-                 SELECT DISTINCT ON (r.console, r.title) r.id, r.title, r.realname, r.image_path, r.console, r.category, r.release_year, r.region, r.serial, r.languages, sr.sort_order,
+            r#"SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as "image_path!", console, category, release_year, region, serial, languages, "versions_count!" FROM (
+                 SELECT DISTINCT ON (r.console, r.title) r.id, r.title, r.realname, r.image_hash, r.console, r.category, r.release_year, r.region, r.serial, r.languages, sr.sort_order,
                  (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!"
                  FROM roms r
                  JOIN shelf_roms sr ON r.id = sr.rom_id
@@ -53,13 +53,6 @@ pub async fn get_shelves(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1She
             error!("{:?}", e);
             V1ApiError::InternalError
         })?;
-
-        for game in &mut games {
-            game.image_path = format!(
-                "{}.webp",
-                game.image_path.replace("/covers/", "/covers_small/")
-            );
-        }
 
         response.push(V1ShelfResponse {
             id: Id::new(shelf.id),

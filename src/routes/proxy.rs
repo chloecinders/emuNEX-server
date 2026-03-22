@@ -13,24 +13,30 @@ pub async fn storage(file: std::path::PathBuf) -> Result<Vec<u8>, Status> {
     let key = format!("/{}", display_path);
 
     let is_small_cover = key.starts_with("/covers_small/");
+    let is_large_cover = key.starts_with("/covers/");
+    let is_icon = key.starts_with("/icons/");
+
+    if (is_small_cover || is_large_cover || is_icon) && !key.ends_with(".png") && !key.ends_with(".webp") && !key.ends_with(".jpg") && !key.ends_with(".jpeg") {
+        return Err(Status::BadRequest);
+    }
 
     match crate::utils::s3::download_object(&key).await {
         Ok(data) => Ok(data),
-        Err(_) if is_small_cover => {
-            let original_key = if key.ends_with(".webp") {
-                key.replace("/covers_small/", "/covers/")
-                    .strip_suffix(".webp")
-                    .unwrap_or(&key)
-                    .to_string()
-            } else {
-                key.replace("/covers_small/", "/covers/")
-            };
+        Err(_) if is_small_cover || is_large_cover || is_icon => {
+            let stem = file.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+            let original_key = format!("/covers/{}.webp", stem);
 
             if let Ok(original_data) = crate::utils::s3::download_object(&original_key).await {
                 if let Ok(img) = image::load_from_memory(&original_data) {
-                    let resized = img.resize(150, 225, image::imageops::FilterType::Lanczos3);
-                    let mut buf = std::io::Cursor::new(Vec::new());
+                    let processed = if is_small_cover {
+                        img.resize(150, 225, image::imageops::FilterType::Lanczos3)
+                    } else if is_icon {
+                        img.resize_to_fill(256, 256, image::imageops::FilterType::Lanczos3)
+                    } else {
+                        img // Large cover, no resizing needed
+                    };
 
+                    let mut buf = std::io::Cursor::new(Vec::new());
                     let format = if key.ends_with(".png") {
                         image::ImageFormat::Png
                     } else if key.ends_with(".webp") {
@@ -39,7 +45,7 @@ pub async fn storage(file: std::path::PathBuf) -> Result<Vec<u8>, Status> {
                         image::ImageFormat::Jpeg
                     };
 
-                    if resized.write_to(&mut buf, format).is_ok() {
+                    if processed.write_to(&mut buf, format).is_ok() {
                         let raw = buf.into_inner();
                         let _ = crate::utils::s3::upload_object(&key, &raw).await;
                         return Ok(raw);
