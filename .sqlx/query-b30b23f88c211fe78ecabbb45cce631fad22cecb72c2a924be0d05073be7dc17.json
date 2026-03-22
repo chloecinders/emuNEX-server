@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, image_hash FROM roms",
+  "query": "SELECT id, image_hash, rom_path FROM roms",
   "describe": {
     "columns": [
       {
@@ -12,6 +12,11 @@
         "ordinal": 1,
         "name": "image_hash",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "rom_path",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -19,8 +24,9 @@
     },
     "nullable": [
       false,
+      false,
       false
     ]
   },
-  "hash": "b292608bd9c63da00907bfc760f3a6afda25cb9209f810d69fbe32d05d5ad626"
+  "hash": "b30b23f88c211fe78ecabbb45cce631fad22cecb72c2a924be0d05073be7dc17"
 }

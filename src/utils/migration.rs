@@ -45,7 +45,13 @@ pub async fn migrate_covers() {
                     let img = match image::load_from_memory(&bytes) {
                         Ok(i) => i,
                         Err(e) => {
-                            println!("Failed to load cover for ROM {}: {}", rom.id, e);
+                            println!("Failed to load cover for ROM {}, deleting ROM: {}", rom.id, e);
+                            let _ = crate::utils::s3::delete_object(&rom.rom_path).await;
+                            if let Err(db_err) = sqlx::query!("DELETE FROM roms WHERE id = $1", rom.id).execute(&*SQL).await {
+                                println!("Failed to delete ROM {} from DB: {}", rom.id, db_err);
+                            } else {
+                                println!("Deleted bootleg ROM {}", rom.id);
+                            }
                             continue;
                         }
                     };
