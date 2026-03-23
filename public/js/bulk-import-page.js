@@ -93,7 +93,7 @@ class EmunexBulkImportPage extends LitElement {
       <div class="auth-container max-1200">
         <div class="auth-card" style="width: 100%">
           <header class="card-header">
-            <a href="/dev" class="back-link">Back</a>
+            <a href="/roms" class="back-link">Back</a>
             <h1>emuNEX</h1>
             <p class="tagline">Bulk Import Games</p>
           </header>

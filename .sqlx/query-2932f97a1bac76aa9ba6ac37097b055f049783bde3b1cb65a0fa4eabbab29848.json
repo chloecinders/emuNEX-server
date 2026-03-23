@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as \"image_path!\", console, category, region, release_year, serial, languages, \"versions_count!\" FROM (\n             SELECT DISTINCT ON (console, title) id, title, realname, image_hash, console, category, region, release_year, serial, languages,\n             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as \"versions_count!\",\n             created_at\n             FROM roms\n             ORDER BY console, title, region NULLS LAST\n         ) sub\n         ORDER BY created_at DESC NULLS LAST\n         LIMIT 50",
+  "query": "SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as \"image_path!\", console, category, region, release_year, serial, languages, \"versions_count!\" FROM (\n             SELECT DISTINCT ON (console, title) id, title, realname, image_hash, console, category, region, release_year, serial, languages,\n             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as \"versions_count!\"\n             FROM roms\n             WHERE (category = $1 OR $1 IS NULL)\n             AND (console = $2 OR $2 IS NULL)\n             ORDER BY console, title, region NULLS LAST, id DESC\n         ) sub\n         ORDER BY title ASC\n         LIMIT $3 OFFSET $4",
   "describe": {
     "columns": [
       {
@@ -60,7 +60,12 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
     },
     "nullable": [
       false,
@@ -76,5 +81,5 @@
       null
     ]
   },
-  "hash": "b25a92fd6377c69f671eecdb99138c8d566fae1cba96381e04af300a14bf58db"
+  "hash": "2932f97a1bac76aa9ba6ac37097b055f049783bde3b1cb65a0fa4eabbab29848"
 }

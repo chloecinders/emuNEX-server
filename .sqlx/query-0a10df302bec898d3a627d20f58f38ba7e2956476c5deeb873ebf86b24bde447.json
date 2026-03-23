@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as \"image_path!\", console, category, region, release_year, serial, languages, \"versions_count!\" FROM (\n             SELECT DISTINCT ON (console, title) id, title, realname, image_hash, console, category, region, release_year, serial, languages,\n             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as \"versions_count!\"\n             FROM roms\n             WHERE (category = $1 OR $1 IS NULL)\n             AND (console = $2 OR $2 IS NULL)\n             ORDER BY console, title, region NULLS LAST\n         ) sub\n         ORDER BY title ASC\n         LIMIT $3 OFFSET $4",
+  "query": "SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as \"image_path!\", console, category, region, release_year, serial, languages, \"versions_count!\" FROM (\n             SELECT DISTINCT ON (r.console, r.title) r.id, r.title, r.realname, r.image_hash, r.console, r.category, r.region, r.release_year, r.serial, r.languages,\n             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as \"versions_count!\",\n             COALESCE(ur.total_play_count, 0) as total_play_count\n             FROM roms r\n             LEFT JOIN (\n                 SELECT rom_id, SUM(play_count) as total_play_count\n                 FROM user_roms\n                 GROUP BY rom_id\n             ) ur ON r.id = ur.rom_id\n             ORDER BY r.console, r.title, r.region NULLS LAST, r.id DESC\n         ) sub\n         ORDER BY total_play_count DESC, title ASC\n         LIMIT 50",
   "describe": {
     "columns": [
       {
@@ -60,12 +60,7 @@
       }
     ],
     "parameters": {
-      "Left": [
-        "Text",
-        "Text",
-        "Int8",
-        "Int8"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -81,5 +76,5 @@
       null
     ]
   },
-  "hash": "1bc75d7b77c61966349025476b8d8fcbbc6f9f36c986114cefafce3ea4bfedf5"
+  "hash": "0a10df302bec898d3a627d20f58f38ba7e2956476c5deeb873ebf86b24bde447"
 }

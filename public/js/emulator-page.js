@@ -60,7 +60,7 @@ class EmunexEmulatorPage extends LitElement {
       <div class="auth-container">
         <div class="auth-card">
           <header class="card-header">
-            <a href="/dev" class="back-link">Back</a>
+            <a href="/emulators" class="back-link">Back</a>
             <h1>emuNEX</h1>
             <p class="tagline">Emulator Upload</p>
           </header>

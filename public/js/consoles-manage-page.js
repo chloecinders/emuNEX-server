@@ -206,7 +206,7 @@ class EmunexConsolesManagePage extends LitElement {
     e.preventDefault();
     const name = this._editingConsole.name;
     try {
-      const res = await fetch(`/api/v1/consoles/${name}/metadata`, {
+      const res = await fetch(`/api/v1/consoles/${name}`, {
         method: "PUT",
         headers: { Authorization: localStorage.getItem("token"), "Content-Type": "application/json" },
         body: JSON.stringify({ card_color: this._editColor }),

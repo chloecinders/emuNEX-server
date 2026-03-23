@@ -203,7 +203,7 @@ class EmunexRomPage extends LitElement {
             <div class="auth-container max-1200">
                 <div class="auth-card" style="width: 100%">
                     <header class="card-header">
-                        <a href="/dev" class="back-link">Back</a>
+                        <a href="/roms" class="back-link">Back</a>
                         <h1>emuNEX</h1>
                         <p class="tagline">Add New ROM to Collection</p>
                     </header>
@@ -215,9 +215,15 @@ class EmunexRomPage extends LitElement {
 
                                 <input type="hidden" id="title_id" name="title_id" />
 
-                                <div class="form-group">
-                                    <label for="title">Title</label>
-                                    <input type="text" id="title" name="title" placeholder="Metroid Fusion" required />
+                                <div class="grid-2">
+                                    <div class="form-group">
+                                        <label for="title">Title</label>
+                                        <input type="text" id="title" name="title" placeholder="Metroid Fusion" required />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="realname">Real Name (Optional)</label>
+                                        <input type="text" id="realname" name="realname" placeholder="Full Retail Name" />
+                                    </div>
                                 </div>
 
                                 <div class="form-group">
@@ -592,6 +598,7 @@ class EmunexRomPage extends LitElement {
         if (!game) return;
         const rr = this.renderRoot;
         rr.querySelector("#title").value = game.name || "";
+        rr.querySelector("#realname").value = game.name || "";
         rr.querySelector("#title_id").value = game.id || "";
         rr.querySelector("#serial").value = game.serial || "";
         rr.querySelector("#md5_hash").value = game.md5 || "";

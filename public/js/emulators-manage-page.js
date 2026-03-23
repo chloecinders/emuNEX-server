@@ -145,7 +145,9 @@ class EmunexEmulatorsManagePage extends LitElement {
         clearTimeout(this._searchTimeout);
         this._searchTimeout = setTimeout(() => {
             this._filtered = this._emulators.filter(
-                (e) => e.name.toLowerCase().includes(q) || (e.consoles && e.consoles.some(c => c.toLowerCase().includes(q))),
+                (e) =>
+                    e.name.toLowerCase().includes(q) ||
+                    (e.consoles && e.consoles.some((c) => c.toLowerCase().includes(q))),
             );
         }, 300);
     }
@@ -207,7 +209,9 @@ class EmunexEmulatorsManagePage extends LitElement {
                                                     >#${emu.id}</td
                                                 >
                                                 <td style="font-weight: 700;">${emu.name}</td>
-                                                <td style="font-weight: 800;">${(emu.consoles || []).map(c => c.toUpperCase()).join(", ")}</td>
+                                                <td style="font-weight: 800;"
+                                                    >${(emu.consoles || []).map((c) => c.toUpperCase()).join(", ")}</td
+                                                >
                                                 <td
                                                     style="text-transform: uppercase; font-size: 0.8rem; font-weight: 700;"
                                                     >${emu.platform}</td
@@ -268,14 +272,24 @@ class EmunexEmulatorsManagePage extends LitElement {
                             <div class="grid-2">
                                 <div class="form-group">
                                     <label>Consoles (select at least one)</label>
-                                    <div class="checkbox-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 4px;">
+                                    <div
+                                        class="checkbox-grid"
+                                        style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 4px;"
+                                    >
                                         ${this._consoles.map(
                                             (c) => html`
-                                                <label class="checkbox-row" style="margin: 0; align-items: center; gap: 4px;">
-                                                    <input type="checkbox" .checked=${this._editConsoles.includes(c.name)} @change=${(e) => this._toggleConsole(c.name, e.target.checked)}>
+                                                <label
+                                                    class="checkbox-row"
+                                                    style="margin: 0; align-items: center; gap: 4px;"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        .checked=${this._editConsoles.includes(c.name)}
+                                                        @change=${(e) => this._toggleConsole(c.name, e.target.checked)}
+                                                    />
                                                     ${c.name.toUpperCase()}
                                                 </label>
-                                            `
+                                            `,
                                         )}
                                     </div>
                                 </div>
@@ -342,7 +356,10 @@ class EmunexEmulatorsManagePage extends LitElement {
                             </div>
 
                             <div class="form-group">
-                                <label>Save File Extensions (press Enter to add, e.g. <code>.sra</code>, <code>.srm</code>)</label>
+                                <label
+                                    >Save File Extensions (press Enter to add, e.g. <code>.sra</code>,
+                                    <code>.srm</code>)</label
+                                >
                                 <div class="tag-system">
                                     ${this._editSaveExtensions.map(
                                         (t) =>
@@ -443,7 +460,7 @@ class EmunexEmulatorsManagePage extends LitElement {
         if (checked) {
             if (!this._editConsoles.includes(name)) this._editConsoles = [...this._editConsoles, name];
         } else {
-            this._editConsoles = this._editConsoles.filter(c => c !== name);
+            this._editConsoles = this._editConsoles.filter((c) => c !== name);
         }
     }
 
@@ -484,7 +501,6 @@ class EmunexEmulatorsManagePage extends LitElement {
         this._editFileName = "";
         this._editModalOpen = true;
 
-        // Slight hack for select sync timing since Lit updates are async
         setTimeout(() => {
             const pPlatform = this.renderRoot.querySelector("#edit-platform");
             if (pPlatform) pPlatform.value = emu.platform;

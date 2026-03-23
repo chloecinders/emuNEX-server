@@ -60,7 +60,7 @@ pub async fn get_rom_list(
              FROM roms
              WHERE (category = $1 OR $1 IS NULL)
              AND (console = $2 OR $2 IS NULL)
-             ORDER BY console, title, region NULLS LAST
+             ORDER BY console, title, region NULLS LAST, id DESC
          ) sub
          ORDER BY title ASC
          LIMIT $3 OFFSET $4"#,
@@ -101,7 +101,7 @@ pub async fn get_search_overview(
                  FROM user_roms
                  GROUP BY rom_id
              ) ur ON r.id = ur.rom_id
-             ORDER BY r.console, r.title, r.region NULLS LAST
+             ORDER BY r.console, r.title, r.region NULLS LAST, r.id DESC
          ) sub
          ORDER BY total_play_count DESC, title ASC
          LIMIT 50"#
@@ -124,7 +124,7 @@ pub async fn get_search_overview(
              (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as "versions_count!",
              created_at
              FROM roms
-             ORDER BY console, title, region NULLS LAST
+             ORDER BY console, title, region NULLS LAST, id DESC
          ) sub
          ORDER BY created_at DESC NULLS LAST
          LIMIT 50"#
@@ -159,7 +159,7 @@ pub async fn get_search_overview(
                  (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as "versions_count!"
                  FROM roms
                  WHERE category = $1
-                 ORDER BY console, title, region NULLS LAST
+                 ORDER BY console, title, region NULLS LAST, id DESC
              ) sub
              ORDER BY title ASC
              LIMIT 50"#,
@@ -245,10 +245,11 @@ pub async fn search_roms(
              WHERE (
                  title ILIKE '%' || $1 || '%'
                  OR serial ILIKE $1 || '%'
+                 OR realname ILIKE '%' || $1 || '%'
              )
              AND (category = $2 OR $2 IS NULL)
              AND (console = $3 OR $3 IS NULL)
-             ORDER BY console, title, region NULLS LAST
+             ORDER BY console, title, region NULLS LAST, id DESC
          ) sub
          ORDER BY
              CASE WHEN serial ILIKE $1 THEN 0 ELSE 1 END,
@@ -302,6 +303,7 @@ pub async fn get_rom_versions(
 #[derive(FromForm)]
 pub struct V1RomUpload<'r> {
     title: String,
+    realname: Option<String>,
     console: String,
     category: String,
     region: Option<String>,
@@ -390,10 +392,11 @@ pub async fn upload_rom(
     let rom_id = crate::utils::snowflake::next_id();
 
     sqlx::query!(
-        "INSERT INTO roms (id, title, console, category, region, serial, release_year, rom_path, image_hash, file_extension, md5_hash, file_size_bytes, languages)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        "INSERT INTO roms (id, title, realname, console, category, region, serial, release_year, rom_path, image_hash, file_extension, md5_hash, file_size_bytes, languages)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
          ON CONFLICT (id) DO UPDATE SET
             title = EXCLUDED.title,
+            realname = EXCLUDED.realname,
             console = EXCLUDED.console,
             category = EXCLUDED.category,
             region = EXCLUDED.region,
@@ -407,6 +410,7 @@ pub async fn upload_rom(
             languages = EXCLUDED.languages",
         rom_id.to_string(),
         data.title,
+        data.realname,
         data.console,
         data.category,
         data.region,
@@ -449,6 +453,7 @@ pub async fn upload_rom(
 #[derive(serde::Deserialize)]
 pub struct V1RomUpdateRequest {
     pub title: String,
+    pub realname: Option<String>,
     pub console: String,
     pub category: String,
     pub region: Option<String>,
@@ -468,8 +473,9 @@ pub async fn update_rom(
     }
 
     sqlx::query!(
-        "UPDATE roms SET title = $1, console = $2, category = $3, region = $4, release_year = $5, serial = $6, languages = $7 WHERE id = $8",
+        "UPDATE roms SET title = $1, realname = $2, console = $3, category = $4, region = $5, release_year = $6, serial = $7, languages = $8 WHERE id = $9",
         data.title,
+        data.realname,
         data.console,
         data.category,
         data.region,
@@ -507,7 +513,7 @@ pub async fn update_rom_file(
         return Err(V1ApiError::NotAuthorized);
     }
 
-    let rom = sqlx::query!("SELECT rom_path FROM roms WHERE id = $1", id)
+    let rom = sqlx::query!("SELECT console, rom_path FROM roms WHERE id = $1", id)
         .fetch_optional(&*SQL)
         .await
         .map_err(|e| {
@@ -525,15 +531,27 @@ pub async fn update_rom_file(
 
     let new_md5 = compute_md5(&rom_bytes);
 
-    upload_object(&rom.rom_path, &rom_bytes)
+    let ext = std::path::Path::new(&rom.rom_path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("bin");
+
+    let new_rom_path = format!("/roms/{}/{}.{}", rom.console, new_md5, ext);
+
+    upload_object(&new_rom_path, &rom_bytes)
         .await
         .map_err(|e| {
             error!("Failed to upload rom: {:?}", e);
             V1ApiError::InternalError
         })?;
 
+    if new_rom_path != rom.rom_path {
+        let _ = crate::utils::s3::delete_object(&rom.rom_path).await;
+    }
+
     sqlx::query!(
-        "UPDATE roms SET md5_hash = $1, file_size_bytes = $2 WHERE id = $3",
+        "UPDATE roms SET rom_path = $1, md5_hash = $2, file_size_bytes = $3 WHERE id = $4",
+        new_rom_path,
         new_md5,
         rom_bytes.len() as i64,
         id
@@ -605,6 +623,11 @@ pub async fn update_rom_image(
             V1ApiError::InternalError
         })?;
 
+    let _ = crate::utils::s3::delete_object(&format!("/covers/{}.webp", _rom.image_hash)).await;
+    let _ =
+        crate::utils::s3::delete_object(&format!("/covers_small/{}.webp", _rom.image_hash)).await;
+    let _ = crate::utils::s3::delete_object(&format!("/icons/{}.webp", _rom.image_hash)).await;
+
     sqlx::query!(
         "UPDATE roms SET image_hash = $1 WHERE id = $2",
         img_hash,
@@ -637,6 +660,9 @@ pub async fn delete_rom(id: String, user: AuthenticatedUser) -> V1ApiResponseTyp
 
     let _ = crate::utils::s3::delete_object(&rom.rom_path).await;
     let _ = crate::utils::s3::delete_object(&format!("/covers/{}.webp", rom.image_hash)).await;
+    let _ =
+        crate::utils::s3::delete_object(&format!("/covers_small/{}.webp", rom.image_hash)).await;
+    let _ = crate::utils::s3::delete_object(&format!("/icons/{}.webp", rom.image_hash)).await;
 
     sqlx::query!("DELETE FROM roms WHERE id = $1", id)
         .execute(&*SQL)

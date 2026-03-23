@@ -1,10 +1,15 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT rom_path FROM roms WHERE id = $1",
+  "query": "SELECT console, rom_path FROM roms WHERE id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
+        "name": "console",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
         "name": "rom_path",
         "type_info": "Text"
       }
@@ -15,8 +20,9 @@
       ]
     },
     "nullable": [
+      false,
       false
     ]
   },
-  "hash": "dcdef3ea84d5b1660aa5929e149ef0c868824e28eaccaaf4f4a48c048151649c"
+  "hash": "cd8340d77fa10584be3f073571ab55175c37f8ca964115756acce0c6cfcf1e4b"
 }

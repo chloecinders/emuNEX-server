@@ -56,7 +56,7 @@ class EmunexConsolesPage extends LitElement {
       <div class="auth-container">
         <div class="auth-card">
           <header class="card-header">
-            <a href="/dev" class="back-link">Back</a>
+            <a href="/consoles" class="back-link">Back</a>
             <h1>emuNEX</h1>
             <p class="tagline">Add or Update Console</p>
           </header>

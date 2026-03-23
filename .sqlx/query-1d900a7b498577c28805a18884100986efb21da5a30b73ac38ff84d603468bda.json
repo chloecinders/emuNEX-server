@@ -1,10 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE roms SET md5_hash = $1, file_size_bytes = $2 WHERE id = $3",
+  "query": "UPDATE roms SET rom_path = $1, md5_hash = $2, file_size_bytes = $3 WHERE id = $4",
   "describe": {
     "columns": [],
     "parameters": {
       "Left": [
+        "Text",
         "Bpchar",
         "Int8",
         "Text"
@@ -12,5 +13,5 @@
     },
     "nullable": []
   },
-  "hash": "8e4453a726cbd965a722ad3c5fd4d50e05bd8fc8553b962354b28afd4c494c16"
+  "hash": "1d900a7b498577c28805a18884100986efb21da5a30b73ac38ff84d603468bda"
 }

@@ -107,7 +107,7 @@ class EmunexRomsManagePage extends LitElement {
             const res = await fetch("/api/v1/consoles", { headers: { Authorization: localStorage.getItem("token") } });
             const json = await res.json();
             this._consoles = json.data || [];
-        } catch {}
+        } catch { }
     }
 
     async fetchRoms() {
@@ -205,23 +205,26 @@ class EmunexRomsManagePage extends LitElement {
                                 </thead>
                                 <tbody>
                                     ${this._loading
-                                        ? html`<tr><td colspan="5" style="text-align: center">Loading...</td></tr>`
-                                        : ""}
+                ? html`<tr><td colspan="5" style="text-align: center">Loading...</td></tr>`
+                : ""}
                                     ${this._error
-                                        ? html`<tr
+                ? html`<tr
                                               ><td colspan="5" style="text-align: center; color: var(--color-error)"
                                                   >${this._error}</td
                                               ></tr
                                           >`
-                                        : ""}
+                : ""}
                                     ${!this._loading && !this._error && this._filtered.length === 0
-                                        ? html`<tr><td colspan="5" style="text-align: center">No ROMs found.</td></tr>`
-                                        : ""}
+                ? html`<tr><td colspan="5" style="text-align: center">No ROMs found.</td></tr>`
+                : ""}
                                     ${this._filtered.map(
-                                        (rom) => html`
+                    (rom) => html`
                                             <tr>
                                                 <td style="font-family: monospace; font-size: 0.8rem">${rom.id}</td>
-                                                <td style="font-weight: 700;">${rom.title}</td>
+                                                <td style="font-weight: 700;">
+                                                    ${rom.title}
+                                                    ${rom.realname ? html`<br><span style="font-weight: normal; font-size: 0.8rem; color: var(--color-text-muted)">${rom.realname}</span>` : ""}
+                                                </td>
                                                 <td style="font-weight: 800;">${rom.console}</td>
                                                 <td class="action-btns">
                                                     <button
@@ -241,21 +244,21 @@ class EmunexRomsManagePage extends LitElement {
                                                 </td>
                                             </tr>
                                         `,
-                                    )}
+                )}
                                 </tbody>
                             </table>
                         </div>
 
                         ${this._status
-                            ? html`
+                ? html`
                                   <div
                                       class="status-box ${this._statusType === "error"
-                                          ? "status-error"
-                                          : "status-success"}"
+                        ? "status-error"
+                        : "status-success"}"
                                       >${this._status}</div
                                   >
                               `
-                            : ""}
+                : ""}
                     </div>
                 </div>
             </div>
@@ -271,19 +274,23 @@ class EmunexRomsManagePage extends LitElement {
                     <div class="content">
                         <div class="section-hint">Edit ROM Metadata</div>
                         <form id="editForm" @submit=${this.submitEdit}>
+                            <div class="form-group">
+                                <label>ID (Read-only)</label>
+                                <input
+                                    type="text"
+                                    .value=${this._editingRom.id}
+                                    readonly
+                                    style="opacity: 0.7; cursor: not-allowed"
+                                />
+                            </div>
                             <div class="grid-2">
-                                <div class="form-group">
-                                    <label>ID (Read-only)</label>
-                                    <input
-                                        type="text"
-                                        .value=${this._editingRom.id}
-                                        readonly
-                                        style="opacity: 0.7; cursor: not-allowed"
-                                    />
-                                </div>
                                 <div class="form-group">
                                     <label>Title</label>
                                     <input type="text" id="edit-title" .value=${this._editingRom.title} required />
+                                </div>
+                                <div class="form-group">
+                                    <label>Real Name</label>
+                                    <input type="text" id="edit-realname" .value=${this._editingRom.realname || ""} />
                                 </div>
                             </div>
 
@@ -303,8 +310,8 @@ class EmunexRomsManagePage extends LitElement {
                                     <select id="edit-console" .value=${this._editingRom.console} required>
                                         <option value="">select console</option>
                                         ${this._consoles.map(
-                                            (c) => html`<option value=${c.name}>${c.name.toUpperCase()}</option>`,
-                                        )}
+            (c) => html`<option value=${c.name}>${c.name.toUpperCase()}</option>`,
+        )}
                                     </select>
                                 </div>
                                 <div class="form-group">
@@ -431,14 +438,27 @@ class EmunexRomsManagePage extends LitElement {
         setTimeout(() => (this._status = ""), 3000);
     }
 
-    openEdit(rom) {
+    async openEdit(rom) {
         this._editingRom = { ...rom };
         this._editRomFileName = "";
         this._editImageFileName = "";
         this._editModalOpen = true;
+
+        try {
+            const res = await fetch(`/api/v1/roms/${encodeURIComponent(rom.id)}`, {
+                headers: { Authorization: localStorage.getItem("token") }
+            });
+            if (res.ok) {
+                const json = await res.json();
+                this._editingRom = { ...rom, ...json.data };
+            }
+        } catch (e) {
+            console.error("Failed to load full rom metadata", e);
+        }
+
         setTimeout(() => {
             const pConsole = this.renderRoot.querySelector("#edit-console");
-            if (pConsole) pConsole.value = rom.console;
+            if (pConsole) pConsole.value = this._editingRom.console;
         }, 0);
     }
 
@@ -453,6 +473,7 @@ class EmunexRomsManagePage extends LitElement {
 
         const reqData = {
             title: root.querySelector("#edit-title").value,
+            realname: root.querySelector("#edit-realname").value || null,
             console: root.querySelector("#edit-console").value,
             category: root.querySelector("#edit-category").value,
             release_year: parseInt(root.querySelector("#edit-year").value) || null,
@@ -462,7 +483,7 @@ class EmunexRomsManagePage extends LitElement {
         };
 
         try {
-            const res = await fetch(`/api/v1/roms/${encodeURIComponent(id)}/metadata`, {
+            const res = await fetch(`/api/v1/roms/${encodeURIComponent(id)}`, {
                 method: "PUT",
                 headers: { Authorization: localStorage.getItem("token"), "Content-Type": "application/json" },
                 body: JSON.stringify(reqData),

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as \"image_path!\", console, category, region, release_year, serial, languages, \"versions_count!\" FROM (\n             SELECT DISTINCT ON (r.console, r.title) r.id, r.title, r.realname, r.image_hash, r.console, r.category, r.region, r.release_year, r.serial, r.languages,\n             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as \"versions_count!\",\n             COALESCE(ur.total_play_count, 0) as total_play_count\n             FROM roms r\n             LEFT JOIN (\n                 SELECT rom_id, SUM(play_count) as total_play_count\n                 FROM user_roms\n                 GROUP BY rom_id\n             ) ur ON r.id = ur.rom_id\n             ORDER BY r.console, r.title, r.region NULLS LAST\n         ) sub\n         ORDER BY total_play_count DESC, title ASC\n         LIMIT 50",
+  "query": "SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as \"image_path!\", console, category, region, release_year, serial, languages, \"versions_count!\" FROM (\n             SELECT DISTINCT ON (console, title) id, title, realname, image_hash, console, category, region, release_year, serial, languages,\n             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as \"versions_count!\"\n             FROM roms\n             WHERE (\n                 title ILIKE '%' || $1 || '%'\n                 OR serial ILIKE $1 || '%'\n                 OR realname ILIKE '%' || $1 || '%'\n             )\n             AND (category = $2 OR $2 IS NULL)\n             AND (console = $3 OR $3 IS NULL)\n             ORDER BY console, title, region NULLS LAST, id DESC\n         ) sub\n         ORDER BY\n             CASE WHEN serial ILIKE $1 THEN 0 ELSE 1 END,\n             title ASC\n         LIMIT $4 OFFSET $5",
   "describe": {
     "columns": [
       {
@@ -60,7 +60,13 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
     },
     "nullable": [
       false,
@@ -76,5 +82,5 @@
       null
     ]
   },
-  "hash": "28f4dd6e5e9b92e0df9d4d1718355f6a59849f2faf1a6fc1e435fd2201d7713c"
+  "hash": "c3ac5c1a4a114211d759093b6d0b04bfa2b9d6dce761c0066b97df00192d2c18"
 }
