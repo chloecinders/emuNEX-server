@@ -276,7 +276,7 @@ class EmunexRomsManagePage extends LitElement {
                                     <label>ID (Read-only)</label>
                                     <input
                                         type="text"
-                                        .value=${this._editingrom.id}
+                                        .value=${this._editingRom.id}
                                         readonly
                                         style="opacity: 0.7; cursor: not-allowed"
                                     />
@@ -448,7 +448,7 @@ class EmunexRomsManagePage extends LitElement {
 
     async submitEdit(e) {
         e.preventDefault();
-        const id = this._editingrom.id;
+        const id = this._editingRom.id;
         const root = this.renderRoot;
 
         const reqData = {
