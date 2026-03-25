@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Search Sections | emuNEX Developer Portal</title>
+    <script type="importmap">{% raw %}
+      {
+        "imports": {
+          "lit": "https://esm.sh/lit@3",
+          "lit/decorators.js": "https://esm.sh/lit@3/decorators.js"
+        }
+      }
+    {% endraw %}</script>
+    <link rel="stylesheet" href="/public/css/dev.css">
+  </head>
+  <body>
+    <emunex-search-sections-page></emunex-search-sections-page>
+    <script type="module" src="/public/js/search-sections-page.js"></script>
+  </body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT image_hash, console FROM roms WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "image_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "console",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "6321d5019ef0651d432a7478e446245535ed7474019b2dca696e031aadcb5544"
+}

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as \"image_path!\", console, category, region, release_year, serial, languages, \"versions_count!\" FROM (\n             SELECT DISTINCT ON (r.console, r.title) r.id, r.title, r.realname, r.image_hash, r.console, r.category, r.region, r.release_year, r.serial, r.languages,\n             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as \"versions_count!\",\n             COALESCE(ur.total_play_count, 0) as total_play_count\n             FROM roms r\n             LEFT JOIN (\n                 SELECT rom_id, SUM(play_count) as total_play_count\n                 FROM user_roms\n                 GROUP BY rom_id\n             ) ur ON r.id = ur.rom_id\n             ORDER BY r.console, r.title, r.region NULLS LAST, r.id DESC\n         ) sub\n         ORDER BY total_play_count DESC, title ASC\n         LIMIT 50",
+  "query": "SELECT id, title, realname, '/covers_small/' || console || '/' || id || '/' || image_hash || '.webp' as \"image_path!\", console, category, region, release_year, serial, languages,\n           1::bigint as \"versions_count!\"\n           FROM roms WHERE title = $1 AND console = $2 ORDER BY region NULLS LAST",
   "describe": {
     "columns": [
       {
@@ -60,7 +60,10 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Text",
+        "Text"
+      ]
     },
     "nullable": [
       false,
@@ -76,5 +79,5 @@
       null
     ]
   },
-  "hash": "0a10df302bec898d3a627d20f58f38ba7e2956476c5deeb873ebf86b24bde447"
+  "hash": "5a36a40a10651674041228bd09acd2359a184bffd903b6f589e231def05bfa5c"
 }

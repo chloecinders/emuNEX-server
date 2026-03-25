@@ -36,7 +36,7 @@ pub async fn get_shelves(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1She
     for shelf in shelves_records {
         let games = sqlx::query_as!(
             V1RomListResponse,
-            r#"SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as "image_path!", console, category, release_year, region, serial, languages, "versions_count!" FROM (
+            r#"SELECT id, title, realname, '/covers_small/' || console || '/' || id || '/' || image_hash || '.webp' as "image_path!", console, category, release_year, region, serial, languages, "versions_count!" FROM (
                  SELECT DISTINCT ON (r.console, r.title) r.id, r.title, r.realname, r.image_hash, r.console, r.category, r.release_year, r.region, r.serial, r.languages, sr.sort_order,
                  (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!"
                  FROM roms r

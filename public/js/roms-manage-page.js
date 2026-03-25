@@ -27,6 +27,7 @@ class EmunexRomsManagePage extends LitElement {
         _editImageFileName: { type: String, state: true },
         _dragoverRom: { type: Boolean, state: true },
         _dragoverImage: { type: Boolean, state: true },
+        _previewImageUrl: { type: String, state: true },
     };
 
     static styles = [
@@ -93,6 +94,7 @@ class EmunexRomsManagePage extends LitElement {
         this._editImageFileName = "";
         this._dragoverRom = false;
         this._dragoverImage = false;
+        this._previewImageUrl = "";
         this._searchTimeout = null;
     }
 
@@ -367,25 +369,31 @@ class EmunexRomsManagePage extends LitElement {
 
                             <div class="form-group">
                                 <label>Replace Cover Image</label>
-                                <label
-                                    class="upload-zone ${this._dragoverImage ? "dragover" : ""}"
-                                    @dragenter=${(e) => this._dragEnter(e, "image")}
-                                    @dragover=${(e) => this._dragEnter(e, "image")}
-                                    @dragleave=${(e) => this._dragLeave(e, "image")}
-                                    @drop=${(e) => this._drop(e, "edit-image", "editImageFileName")}
-                                >
-                                    <div class="upload-icon">↑</div>
-                                    <div class="upload-info">
-                                        <div class="upload-text">Upload new cover</div>
-                                        <div class="file-name">${this._editImageFileName}</div>
-                                    </div>
-                                    <input
-                                        type="file"
-                                        id="edit-image"
-                                        style="display: none"
-                                        @change=${(e) => this._fileChange(e, "editImageFileName")}
-                                    />
-                                </label>
+                                <div style="display: flex; gap: var(--spacing-md); align-items: start;">
+                                    ${this._previewImageUrl ? html`
+                                        <img src=${this._previewImageUrl} style="width: 100px; height: 140px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--color-border); flex-shrink: 0;" />
+                                    ` : ""}
+                                    <label
+                                        class="upload-zone ${this._dragoverImage ? "dragover" : ""}"
+                                        style="flex: 1; min-height: 140px; margin: 0;"
+                                        @dragenter=${(e) => this._dragEnter(e, "image")}
+                                        @dragover=${(e) => this._dragEnter(e, "image")}
+                                        @dragleave=${(e) => this._dragLeave(e, "image")}
+                                        @drop=${(e) => this._drop(e, "edit-image", "editImageFileName")}
+                                    >
+                                        <div class="upload-icon">↑</div>
+                                        <div class="upload-info">
+                                            <div class="upload-text">Upload new cover</div>
+                                            <div class="file-name">${this._editImageFileName}</div>
+                                        </div>
+                                        <input
+                                            type="file"
+                                            id="edit-image"
+                                            style="display: none"
+                                            @change=${(e) => this._fileChange(e, "editImageFileName")}
+                                        />
+                                    </label>
+                                </div>
                             </div>
 
                             <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-lg)">
@@ -426,10 +434,22 @@ class EmunexRomsManagePage extends LitElement {
         this._dragoverImage = false;
         const input = this.renderRoot.querySelector("#" + id);
         input.files = e.dataTransfer.files;
-        if (input.files.length) this[`_${prop}`] = input.files[0].name;
+        if (input.files.length) {
+            this[`_${prop}`] = input.files[0].name;
+            if (prop === "editImageFileName") {
+                if (this._previewImageUrl && this._previewImageUrl.startsWith("blob:")) URL.revokeObjectURL(this._previewImageUrl);
+                this._previewImageUrl = URL.createObjectURL(input.files[0]);
+            }
+        }
     }
     _fileChange(e, prop) {
-        if (e.target.files.length) this[`_${prop}`] = e.target.files[0].name;
+        if (e.target.files.length) {
+            this[`_${prop}`] = e.target.files[0].name;
+            if (prop === "editImageFileName") {
+                if (this._previewImageUrl && this._previewImageUrl.startsWith("blob:")) URL.revokeObjectURL(this._previewImageUrl);
+                this._previewImageUrl = URL.createObjectURL(e.target.files[0]);
+            }
+        }
     }
 
     showStatus(msg, type) {
@@ -442,6 +462,7 @@ class EmunexRomsManagePage extends LitElement {
         this._editingRom = { ...rom };
         this._editRomFileName = "";
         this._editImageFileName = "";
+        this._previewImageUrl = rom.image_path ? (rom.image_path.startsWith("blob:") ? rom.image_path : `/storage${rom.image_path}`) : "";
         this._editModalOpen = true;
 
         try {
@@ -451,6 +472,9 @@ class EmunexRomsManagePage extends LitElement {
             if (res.ok) {
                 const json = await res.json();
                 this._editingRom = { ...rom, ...json.data };
+                if (this._editingRom.image_path) {
+                    this._previewImageUrl = this._editingRom.image_path.startsWith("blob:") ? this._editingRom.image_path : `/storage${this._editingRom.image_path}`;
+                }
             }
         } catch (e) {
             console.error("Failed to load full rom metadata", e);

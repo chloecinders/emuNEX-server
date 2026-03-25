@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE search_sections SET title = $1, section_type = $2, smart_filter = $3, filter_value = $4, order_index = $5 WHERE id = $6",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8f0a66f0d38a0fe230170de0c5c0017fd9c979b6acead67c6971e350f0664e84"
+}

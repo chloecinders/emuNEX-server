@@ -28,8 +28,13 @@ pub async fn storage(file: std::path::PathBuf) -> Result<Vec<u8>, Status> {
     match crate::utils::s3::download_object(&key).await {
         Ok(data) => Ok(data),
         Err(_) if is_small_cover || is_large_cover || is_icon => {
-            let stem = file.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-            let original_key = format!("/covers/{}.webp", stem);
+            let original_key = if is_small_cover {
+                key.replacen("/covers_small/", "/covers/", 1)
+            } else if is_icon {
+                key.replacen("/icons/", "/covers/", 1)
+            } else {
+                return Err(Status::NotFound);
+            };
 
             if let Ok(original_data) = crate::utils::s3::download_object(&original_key).await {
                 if let Ok(img) = image::load_from_memory(&original_data) {

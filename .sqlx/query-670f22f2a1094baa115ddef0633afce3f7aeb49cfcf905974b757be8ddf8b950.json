@@ -1,22 +1,22 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT image_hash FROM roms WHERE id = $1",
+  "query": "SELECT rom_id FROM search_section_roms WHERE section_id = $1 ORDER BY order_index ASC",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "image_hash",
+        "name": "rom_id",
         "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Int8"
       ]
     },
     "nullable": [
       false
     ]
   },
-  "hash": "9e96cf1d6584db8da38a974793393af93956291beec73d3f40c3ae8842d4700a"
+  "hash": "670f22f2a1094baa115ddef0633afce3f7aeb49cfcf905974b757be8ddf8b950"
 }

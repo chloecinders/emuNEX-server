@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, title, section_type, smart_filter, filter_value, order_index FROM search_sections ORDER BY order_index ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "section_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "smart_filter",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "filter_value",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "order_index",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "a4674043d780e99a7b6f24af7cebd6195c4b51f7f305b47e5a1789f7fee4e39d"
+}

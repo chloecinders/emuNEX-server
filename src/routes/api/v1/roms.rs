@@ -54,7 +54,7 @@ pub async fn get_rom_list(
 
     let roms = sqlx::query_as!(
         V1RomListResponse,
-        r#"SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, "versions_count!" FROM (
+        r#"SELECT id, title, realname, '/covers_small/' || console || '/' || id || '/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, "versions_count!" FROM (
              SELECT DISTINCT ON (console, title) id, title, realname, image_hash, console, category, region, release_year, serial, languages,
              (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as "versions_count!"
              FROM roms
@@ -80,100 +80,143 @@ pub async fn get_rom_list(
 }
 
 #[derive(Serialize)]
-pub struct V1SearchOverviewResponse(pub std::collections::HashMap<String, Vec<V1RomListResponse>>);
+pub struct V1SearchOverviewGroup {
+    pub title: String,
+    pub games: Vec<V1RomListResponse>,
+}
+
+#[derive(Serialize)]
+pub struct V1SearchOverviewResponse(pub Vec<V1SearchOverviewGroup>);
 impl V1ApiResponseTrait for V1SearchOverviewResponse {}
 
 #[get("/api/v1/search/overview")]
 pub async fn get_search_overview(
     _user: AuthenticatedUser,
 ) -> V1ApiResponseType<V1SearchOverviewResponse> {
-    let mut overview = std::collections::HashMap::new();
+    let mut overview = Vec::new();
 
-    let most_played = sqlx::query_as!(
-        V1RomListResponse,
-        r#"SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, "versions_count!" FROM (
-             SELECT DISTINCT ON (r.console, r.title) r.id, r.title, r.realname, r.image_hash, r.console, r.category, r.region, r.release_year, r.serial, r.languages,
-             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!",
-             COALESCE(ur.total_play_count, 0) as total_play_count
-             FROM roms r
-             LEFT JOIN (
-                 SELECT rom_id, SUM(play_count) as total_play_count
-                 FROM user_roms
-                 GROUP BY rom_id
-             ) ur ON r.id = ur.rom_id
-             ORDER BY r.console, r.title, r.region NULLS LAST, r.id DESC
-         ) sub
-         ORDER BY total_play_count DESC, title ASC
-         LIMIT 50"#
-    )
-    .fetch_all(&*SQL)
-    .await
-    .map_err(|e| {
-        error!("Failed to fetch most played: {:?}", e);
-        V1ApiError::InternalError
-    })?;
-
-    if !most_played.is_empty() {
-        overview.insert("Most Played".to_string(), most_played);
-    }
-
-    let recently_added = sqlx::query_as!(
-        V1RomListResponse,
-        r#"SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, "versions_count!" FROM (
-             SELECT DISTINCT ON (console, title) id, title, realname, image_hash, console, category, region, release_year, serial, languages,
-             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as "versions_count!",
-             created_at
-             FROM roms
-             ORDER BY console, title, region NULLS LAST, id DESC
-         ) sub
-         ORDER BY created_at DESC NULLS LAST
-         LIMIT 50"#
-    )
-    .fetch_all(&*SQL)
-    .await
-    .map_err(|e| {
-        error!("Failed to fetch recently added: {:?}", e);
-        V1ApiError::InternalError
-    })?;
-
-    if !recently_added.is_empty() {
-        overview.insert("Recently Added".to_string(), recently_added);
-    }
-
-    let categories = sqlx::query!(
-        r#"SELECT DISTINCT category as "category!" FROM roms WHERE category IS NOT NULL"#
-    )
-    .fetch_all(&*SQL)
-    .await
-    .map_err(|e| {
-        error!("Failed to fetch distinct categories: {:?}", e);
-        V1ApiError::InternalError
-    })?;
-
-    for record in categories {
-        let category = record.category;
-        let cat_roms = sqlx::query_as!(
-            V1RomListResponse,
-            r#"SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, "versions_count!" FROM (
-                 SELECT DISTINCT ON (console, title) id, title, realname, image_hash, console, category, region, release_year, serial, languages,
-                 (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as "versions_count!"
-                 FROM roms
-                 WHERE category = $1
-                 ORDER BY console, title, region NULLS LAST, id DESC
-             ) sub
-             ORDER BY title ASC
-             LIMIT 50"#,
-            category
-        )
+    let sections = sqlx::query!("SELECT id, title, section_type, smart_filter, filter_value FROM search_sections ORDER BY order_index ASC")
         .fetch_all(&*SQL)
         .await
         .map_err(|e| {
-            error!("Failed to fetch roms for category {}: {:?}", category, e);
+            error!("Failed to fetch search sections for overview: {:?}", e);
             V1ApiError::InternalError
         })?;
 
-        if !cat_roms.is_empty() {
-            overview.insert(category, cat_roms);
+    for s in sections {
+        if s.section_type == "smart" {
+            if s.smart_filter.as_deref() == Some("most_played") {
+                let most_played = sqlx::query_as!(
+                    V1RomListResponse,
+                    r#"SELECT id, title, realname, '/covers_small/' || console || '/' || id || '/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, "versions_count!" FROM (
+                         SELECT DISTINCT ON (r.console, r.title) r.id, r.title, r.realname, r.image_hash, r.console, r.category, r.region, r.release_year, r.serial, r.languages,
+                         (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!",
+                         COALESCE(ur.total_play_count, 0) as total_play_count
+                         FROM roms r
+                         LEFT JOIN (
+                             SELECT rom_id, SUM(play_count) as total_play_count
+                             FROM user_roms
+                             GROUP BY rom_id
+                         ) ur ON r.id = ur.rom_id
+                         ORDER BY r.console, r.title, r.region NULLS LAST, r.id DESC
+                     ) sub
+                     ORDER BY total_play_count DESC, title ASC
+                     LIMIT 50"#
+                )
+                .fetch_all(&*SQL)
+                .await
+                .map_err(|e| {
+                    error!("Failed to fetch most played: {:?}", e);
+                    V1ApiError::InternalError
+                })?;
+
+                if !most_played.is_empty() {
+                    overview.push(V1SearchOverviewGroup {
+                        title: s.title,
+                        games: most_played,
+                    });
+                }
+            } else if s.smart_filter.as_deref() == Some("recently_added") {
+                let recently_added = sqlx::query_as!(
+                    V1RomListResponse,
+                    r#"SELECT id, title, realname, '/covers_small/' || console || '/' || id || '/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, "versions_count!" FROM (
+                         SELECT DISTINCT ON (console, title) id, title, realname, image_hash, console, category, region, release_year, serial, languages,
+                         (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as "versions_count!",
+                         created_at
+                         FROM roms
+                         ORDER BY console, title, region NULLS LAST, id DESC
+                     ) sub
+                     ORDER BY created_at DESC NULLS LAST
+                     LIMIT 50"#
+                )
+                .fetch_all(&*SQL)
+                .await
+                .map_err(|e| {
+                    error!("Failed to fetch recently added: {:?}", e);
+                    V1ApiError::InternalError
+                })?;
+
+                if !recently_added.is_empty() {
+                    overview.push(V1SearchOverviewGroup {
+                        title: s.title,
+                        games: recently_added,
+                    });
+                }
+            }
+        } else if s.section_type == "category" {
+            if let Some(category) = s.filter_value {
+                let cat_roms = sqlx::query_as!(
+                    V1RomListResponse,
+                    r#"SELECT id, title, realname, '/covers_small/' || console || '/' || id || '/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, "versions_count!" FROM (
+                         SELECT DISTINCT ON (console, title) id, title, realname, image_hash, console, category, region, release_year, serial, languages,
+                         (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as "versions_count!"
+                         FROM roms
+                         WHERE category = $1
+                         ORDER BY console, title, region NULLS LAST, id DESC
+                     ) sub
+                     ORDER BY title ASC
+                     LIMIT 50"#,
+                    category
+                )
+                .fetch_all(&*SQL)
+                .await
+                .map_err(|e| {
+                    error!("Failed to fetch roms for category {}: {:?}", category, e);
+                    V1ApiError::InternalError
+                })?;
+
+                if !cat_roms.is_empty() {
+                    overview.push(V1SearchOverviewGroup {
+                        title: s.title,
+                        games: cat_roms,
+                    });
+                }
+            }
+        } else if s.section_type == "custom" {
+            let custom_roms = sqlx::query_as!(
+                V1RomListResponse,
+                r#"SELECT r.id, r.title, r.realname, '/covers_small/' || r.console || '/' || r.id || '/' || r.image_hash || '.webp' as "image_path!", r.console, r.category, r.region, r.release_year, r.serial, r.languages,
+                   (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!"
+                   FROM search_section_roms ssr
+                   JOIN roms r ON r.id = ssr.rom_id
+                   WHERE ssr.section_id = $1
+                   ORDER BY ssr.order_index ASC
+                   LIMIT 50"#,
+                s.id
+            )
+            .fetch_all(&*SQL)
+            .await
+            .map_err(|e| {
+                error!("Failed to fetch custom section {}, {:?}", s.id, e);
+                V1ApiError::InternalError
+            })?;
+            
+            if !custom_roms.is_empty() {
+                overview.push(V1SearchOverviewGroup {
+                    title: s.title,
+                    games: custom_roms,
+                });
+            }
         }
     }
 
@@ -208,8 +251,8 @@ pub async fn get_rom_single(
 ) -> V1ApiResponseType<V1RomFullResponse> {
     let rom = sqlx::query_as!(
         V1RomFullResponse,
-        r#"SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, r.rom_path, '/covers/' || r.image_hash || '.webp' as "image_path!", r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,
-            (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!"
+        r#"SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, r.rom_path, '/covers/' || r.console || '/' || r.id || '/' || r.image_hash || '.webp' as "image_path!", r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,
+             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!"
            FROM roms r WHERE r.id = $1"#, 
         id
     )
@@ -238,7 +281,7 @@ pub async fn search_roms(
 
     let results = sqlx::query_as!(
         V1RomListResponse,
-        r#"SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, "versions_count!" FROM (
+        r#"SELECT id, title, realname, '/covers_small/' || console || '/' || id || '/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, "versions_count!" FROM (
              SELECT DISTINCT ON (console, title) id, title, realname, image_hash, console, category, region, release_year, serial, languages,
              (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as "versions_count!"
              FROM roms
@@ -284,7 +327,7 @@ pub async fn get_rom_versions(
 
     let versions = sqlx::query_as!(
         V1RomListResponse,
-        r#"SELECT id, title, realname, '/covers_small/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages,
+        r#"SELECT id, title, realname, '/covers_small/' || console || '/' || id || '/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages,
            1::bigint as "versions_count!"
            FROM roms WHERE title = $1 AND console = $2 ORDER BY region NULLS LAST"#,
         base_rom.title,
@@ -378,9 +421,11 @@ pub async fn upload_rom(
         V1ApiError::InternalError
     })?;
 
+    let rom_id = crate::utils::snowflake::next_id();
+    
     let img_webp_bytes = buf.into_inner();
     let img_hash = compute_md5(&img_webp_bytes);
-    let img_path = format!("/covers/{}.webp", img_hash);
+    let img_path = format!("/covers/{}/{}/{}.webp", data.console, rom_id, img_hash);
 
     upload_object(&img_path, &img_webp_bytes)
         .await
@@ -389,7 +434,7 @@ pub async fn upload_rom(
             V1ApiError::InternalError
         })?;
 
-    let rom_id = crate::utils::snowflake::next_id();
+
 
     sqlx::query!(
         "INSERT INTO roms (id, title, realname, console, category, region, serial, release_year, rom_path, image_hash, file_extension, md5_hash, file_size_bytes, languages)
@@ -585,7 +630,7 @@ pub async fn update_rom_image(
         return Err(V1ApiError::NotAuthorized);
     }
 
-    let _rom = sqlx::query!("SELECT image_hash FROM roms WHERE id = $1", id)
+    let _rom = sqlx::query!("SELECT image_hash, console FROM roms WHERE id = $1", id)
         .fetch_optional(&*SQL)
         .await
         .map_err(|e| {
@@ -614,7 +659,7 @@ pub async fn update_rom_image(
 
     let img_webp_bytes = buf.into_inner();
     let img_hash = compute_md5(&img_webp_bytes);
-    let img_path = format!("/covers/{}.webp", img_hash);
+    let img_path = format!("/covers/{}/{}/{}.webp", _rom.console, id, img_hash);
 
     upload_object(&img_path, &img_webp_bytes)
         .await
@@ -623,10 +668,9 @@ pub async fn update_rom_image(
             V1ApiError::InternalError
         })?;
 
-    let _ = crate::utils::s3::delete_object(&format!("/covers/{}.webp", _rom.image_hash)).await;
-    let _ =
-        crate::utils::s3::delete_object(&format!("/covers_small/{}.webp", _rom.image_hash)).await;
-    let _ = crate::utils::s3::delete_object(&format!("/icons/{}.webp", _rom.image_hash)).await;
+    let _ = crate::utils::s3::delete_object(&format!("/covers/{}/{}/{}.webp", _rom.console, id, _rom.image_hash)).await;
+    let _ = crate::utils::s3::delete_object(&format!("/covers_small/{}/{}/{}.webp", _rom.console, id, _rom.image_hash)).await;
+    let _ = crate::utils::s3::delete_object(&format!("/icons/{}/{}/{}.webp", _rom.console, id, _rom.image_hash)).await;
 
     sqlx::query!(
         "UPDATE roms SET image_hash = $1 WHERE id = $2",
@@ -649,7 +693,7 @@ pub async fn delete_rom(id: String, user: AuthenticatedUser) -> V1ApiResponseTyp
         return Err(V1ApiError::NotAuthorized);
     }
 
-    let rom = sqlx::query!("SELECT rom_path, image_hash FROM roms WHERE id = $1", id)
+    let rom = sqlx::query!("SELECT rom_path, image_hash, console FROM roms WHERE id = $1", id)
         .fetch_optional(&*SQL)
         .await
         .map_err(|e| {
@@ -659,10 +703,9 @@ pub async fn delete_rom(id: String, user: AuthenticatedUser) -> V1ApiResponseTyp
         .ok_or(V1ApiError::NotFound)?;
 
     let _ = crate::utils::s3::delete_object(&rom.rom_path).await;
-    let _ = crate::utils::s3::delete_object(&format!("/covers/{}.webp", rom.image_hash)).await;
-    let _ =
-        crate::utils::s3::delete_object(&format!("/covers_small/{}.webp", rom.image_hash)).await;
-    let _ = crate::utils::s3::delete_object(&format!("/icons/{}.webp", rom.image_hash)).await;
+    let _ = crate::utils::s3::delete_object(&format!("/covers/{}/{}/{}.webp", rom.console, id, rom.image_hash)).await;
+    let _ = crate::utils::s3::delete_object(&format!("/covers_small/{}/{}/{}.webp", rom.console, id, rom.image_hash)).await;
+    let _ = crate::utils::s3::delete_object(&format!("/icons/{}/{}/{}.webp", rom.console, id, rom.image_hash)).await;
 
     sqlx::query!("DELETE FROM roms WHERE id = $1", id)
         .execute(&*SQL)
@@ -766,10 +809,10 @@ pub async fn get_user_library(
         .map(|r| V1UserLibraryResponse {
             id: r.rom_id.clone(),
             region: r.region,
-            rom_id: r.rom_id,
+            rom_id: r.rom_id.clone(),
             title: r.title,
             realname: r.realname,
-            image_path: format!("/covers_small/{}.webp", r.image_hash),
+            image_path: format!("/covers_small/{}/{}/{}.webp", r.console, r.rom_id, r.image_hash),
             console: r.console,
             play_count: r.play_count,
             last_played: r.last_played,
@@ -911,8 +954,9 @@ pub async fn bulk_upload_roms(
             .and_then(|e| e.to_str())
             .unwrap_or("bin");
 
+        let rom_id = crate::utils::snowflake::next_id().to_string();
         let s3_rom = format!("/roms/{}/{}.{}", console, rom_md5, rom_ext);
-        let s3_img = format!("/covers/{}.webp", img_hash);
+        let s3_img = format!("/covers/{}/{}/{}.webp", console, rom_id, img_hash);
 
         info!("Uploading files for: {}", title);
         if tokio::try_join!(
@@ -936,7 +980,6 @@ pub async fn bulk_upload_roms(
             }
         };
 
-        let rom_id = crate::utils::snowflake::next_id().to_string();
         let db_res = sqlx::query!(
             "INSERT INTO roms (id, title, console, category, region, serial, release_year, rom_path, image_hash, file_extension, md5_hash, file_size_bytes, languages)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)

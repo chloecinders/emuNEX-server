@@ -8,3 +8,4 @@ pub mod roms;
 pub mod reports;
 pub mod saves;
 pub mod users;
+pub mod search_sections;

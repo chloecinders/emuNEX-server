@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, r.rom_path, '/covers/' || r.image_hash || '.webp' as \"image_path!\", r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,\n            (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as \"versions_count!\"\n           FROM roms r WHERE r.id = $1",
+  "query": "SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, r.rom_path, '/covers/' || r.console || '/' || r.id || '/' || r.image_hash || '.webp' as \"image_path!\", r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,\n             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as \"versions_count!\"\n           FROM roms r WHERE r.id = $1",
   "describe": {
     "columns": [
       {
@@ -108,5 +108,5 @@
       null
     ]
   },
-  "hash": "1b7d706b523dcf9cf5c4e4dbff127d72cc15be1f1c8a61003de5a0503dbed8a3"
+  "hash": "c7a446b63b1a19abfc1a54b804b9ec91333ed1b490ba45757535a6f1b5d409c2"
 }

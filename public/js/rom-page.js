@@ -31,6 +31,7 @@ class EmunexRomPage extends LitElement {
         _dragoverRom: { type: Boolean, state: true },
         _dragoverImage: { type: Boolean, state: true },
         _dragoverDat: { type: Boolean, state: true },
+        _previewImageUrl: { type: String, state: true },
     };
 
     static styles = [
@@ -159,6 +160,7 @@ class EmunexRomPage extends LitElement {
         this._noIntroStatus = "";
         this._datNotesData = {};
 
+        this._previewImageUrl = "";
         this._searchTimeout = null;
         this._notesTimeout = null;
     }
@@ -297,27 +299,33 @@ class EmunexRomPage extends LitElement {
 
                                 <div class="form-group">
                                     <label>Cover Image</label>
-                                    <label
-                                        class="upload-zone ${this._dragoverImage ? "dragover" : ""}"
-                                        @dragenter=${(e) => this._dragEnter(e, "image")}
-                                        @dragover=${(e) => this._dragEnter(e, "image")}
-                                        @dragleave=${(e) => this._dragLeave(e, "image")}
-                                        @drop=${(e) => this._drop(e, "image_file", "imageFileName")}
-                                    >
-                                        <div class="upload-icon">↑</div>
-                                        <div class="upload-info">
-                                            <div class="upload-text">Upload cover image</div>
-                                            <div class="file-name">${this._imageFileName}</div>
-                                        </div>
-                                        <input
-                                            type="file"
-                                            id="image_file"
-                                            name="image_file"
-                                            required
-                                            style="display: none"
-                                            @change=${(e) => this._fileChange(e, "imageFileName")}
-                                        />
-                                    </label>
+                                    <div style="display: flex; gap: var(--spacing-md); align-items: start;">
+                                        ${this._previewImageUrl ? html`
+                                            <img src=${this._previewImageUrl} style="width: 100px; height: 140px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--color-border); flex-shrink: 0;" />
+                                        ` : ""}
+                                        <label
+                                            class="upload-zone ${this._dragoverImage ? "dragover" : ""}"
+                                            style="flex: 1; min-height: 140px; margin: 0;"
+                                            @dragenter=${(e) => this._dragEnter(e, "image")}
+                                            @dragover=${(e) => this._dragEnter(e, "image")}
+                                            @dragleave=${(e) => this._dragLeave(e, "image")}
+                                            @drop=${(e) => this._drop(e, "image_file", "imageFileName")}
+                                        >
+                                            <div class="upload-icon">↑</div>
+                                            <div class="upload-info">
+                                                <div class="upload-text">Upload cover image</div>
+                                                <div class="file-name">${this._imageFileName}</div>
+                                            </div>
+                                            <input
+                                                type="file"
+                                                id="image_file"
+                                                name="image_file"
+                                                required
+                                                style="display: none"
+                                                @change=${(e) => this._fileChange(e, "imageFileName")}
+                                            />
+                                        </label>
+                                    </div>
                                 </div>
 
                                 <button type="submit" class="popout-btn" ?disabled=${this._loading}>
@@ -475,10 +483,22 @@ class EmunexRomPage extends LitElement {
         this._dragoverDat = false;
         const input = this.renderRoot.querySelector("#" + inputId);
         input.files = e.dataTransfer.files;
-        if (input.files.length) this[`_${propName}`] = input.files[0].name;
+        if (input.files.length) {
+            this[`_${propName}`] = input.files[0].name;
+            if (propName === "imageFileName") {
+                if (this._previewImageUrl && this._previewImageUrl.startsWith("blob:")) URL.revokeObjectURL(this._previewImageUrl);
+                this._previewImageUrl = URL.createObjectURL(input.files[0]);
+            }
+        }
     }
     _fileChange(e, propName) {
-        if (e.target.files.length) this[`_${propName}`] = e.target.files[0].name;
+        if (e.target.files.length) {
+            this[`_${propName}`] = e.target.files[0].name;
+            if (propName === "imageFileName") {
+                if (this._previewImageUrl && this._previewImageUrl.startsWith("blob:")) URL.revokeObjectURL(this._previewImageUrl);
+                this._previewImageUrl = URL.createObjectURL(e.target.files[0]);
+            }
+        }
     }
 
     async _handleUploadSubmit(e) {

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM search_section_roms WHERE section_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "24af62a9e9f9d237aecc550f02effc4980333490e2c61d7ba1eb4b47987f2050"
+}

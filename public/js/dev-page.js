@@ -101,6 +101,7 @@ render() {
               <a href="/emulators" class="nav-btn"><span>Manage Emulator</span></a>
               <a href="/consoles" class="nav-btn"><span>Manage Consoles</span></a>
               ${isAdmin ? html`<a href="/users" class="nav-btn"><span>Manage Users</span></a>` : ""}
+              ${isAdmin ? html`<a href="/search_sections" class="nav-btn"><span>Manage Search Sections</span></a>` : ""}
               ${isAdmin ? html`<a href="/roms/bulk_upload" class="nav-btn"><span>Bulk Import Games</span></a>` : ""}
             </nav>
 

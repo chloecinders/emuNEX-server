@@ -59,3 +59,18 @@ pub async fn delete_object(key: &str) -> Result<(), String> {
     })?;
     Ok(())
 }
+
+pub async fn list_objects_shallow(prefix: &str) -> Result<Vec<String>, String> {
+    let prefix = prefix.strip_prefix('/').unwrap_or(prefix);
+    let bucket = &*S3;
+    let mut results = Vec::new();
+    
+    let list_results = bucket.list(prefix.to_string(), Some("/".to_string())).await.map_err(|e| e.to_string())?;
+    for res in list_results {
+        for obj in res.contents {
+            results.push(obj.key);
+        }
+    }
+    
+    Ok(results)
+}
