@@ -46,7 +46,7 @@ async fn rocket() -> _ {
         panic!("Could not run database migrations; err = {err}")
     }
 
-    utils::migration::migrate_covers().await;
+    utils::migration::remove_root_covers().await;
 
     rocket::build()
         .attach(Template::fairing())
