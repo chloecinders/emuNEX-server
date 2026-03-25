@@ -357,7 +357,10 @@ fn parse_nointro_xml(xml: &str) -> Result<Vec<ParsedGame>, quick_xml::Error> {
                 }
             }
             Ok(Event::Text(e)) if next_is_name => {
-                dat_name = e.unescape().unwrap_or_default().into_owned();
+                let s = String::from_utf8_lossy(e.as_ref()).to_string();
+                dat_name = quick_xml::escape::unescape(&s)
+                    .map(|s| s.to_string())
+                    .unwrap_or(s);
                 next_is_name = false;
             }
             Ok(Event::End(e)) => {
