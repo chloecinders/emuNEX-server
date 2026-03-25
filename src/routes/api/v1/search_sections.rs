@@ -9,11 +9,12 @@ use crate::{
         api_response::V1ApiResponseTrait,
         v1::guards::{AuthenticatedUser, UserRole},
     },
+    utils::id::Id,
 };
 
 #[derive(Serialize, sqlx::FromRow)]
 pub struct V1SearchSectionResponse {
-    pub id: i64,
+    pub id: Id,
     pub title: String,
     pub section_type: String,
     pub smart_filter: Option<String>,
@@ -28,7 +29,7 @@ impl V1ApiResponseTrait for V1SearchSectionResponse {}
 pub async fn get_search_sections(
     _user: AuthenticatedUser,
 ) -> V1ApiResponseType<Vec<V1SearchSectionResponse>> {
-        let sections = sqlx::query!(
+    let sections = sqlx::query!(
             "SELECT id, title, section_type, smart_filter, filter_value, order_index FROM search_sections ORDER BY order_index ASC"
         )
         .fetch_all(&*SQL)
@@ -38,12 +39,12 @@ pub async fn get_search_sections(
             V1ApiError::InternalError
         })?;
 
-        let mut out = Vec::new();
+    let mut out = Vec::new();
 
-        for s in sections {
-            let mut custom_roms = None;
-            if s.section_type == "custom" {
-                let rom_ids = sqlx::query!(
+    for s in sections {
+        let mut custom_roms = None;
+        if s.section_type == "custom" {
+            let rom_ids = sqlx::query!(
                     "SELECT rom_id FROM search_section_roms WHERE section_id = $1 ORDER BY order_index ASC",
                     s.id
                 )
@@ -53,21 +54,21 @@ pub async fn get_search_sections(
                     error!("Failed to fetch custom section roms: {:?}", e);
                     V1ApiError::InternalError
                 })?;
-                custom_roms = Some(rom_ids.into_iter().map(|r| r.rom_id).collect());
-            }
-
-            out.push(V1SearchSectionResponse {
-                id: s.id,
-                title: s.title,
-                section_type: s.section_type,
-                smart_filter: s.smart_filter,
-                filter_value: s.filter_value,
-                order_index: s.order_index,
-                roms: custom_roms,
-            });
+            custom_roms = Some(rom_ids.into_iter().map(|r| r.rom_id).collect());
         }
 
-        Ok(V1ApiResponse(out))
+        out.push(V1SearchSectionResponse {
+            id: Id::new(s.id),
+            title: s.title,
+            section_type: s.section_type,
+            smart_filter: s.smart_filter,
+            filter_value: s.filter_value,
+            order_index: s.order_index,
+            roms: custom_roms,
+        });
+    }
+
+    Ok(V1ApiResponse(out))
 }
 
 #[derive(Deserialize)]
@@ -210,7 +211,10 @@ pub async fn update_search_section(
             .execute(&mut *tx)
             .await
             .map_err(|e| {
-                error!("Failed to clear section roms (type changed from custom): {:?}", e);
+                error!(
+                    "Failed to clear section roms (type changed from custom): {:?}",
+                    e
+                );
                 V1ApiError::InternalError
             })?;
     }
@@ -225,8 +229,7 @@ pub async fn update_search_section(
 
 #[derive(Deserialize)]
 pub struct V1SearchSectionOrderUpdateRequest {
-    // Array of (id, order_index)
-    pub updates: Vec<(i64, i32)>,
+    pub updates: Vec<(Id, i32)>,
 }
 
 #[put("/api/v1/search_sections/order", format = "json", data = "<data>")]
@@ -237,20 +240,24 @@ pub async fn update_search_sections_order(
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
         return Err(V1ApiError::NotAuthorized);
     }
-    
+
     let mut tx = SQL.begin().await.map_err(|e| {
         error!("Failed to begin transaction: {:?}", e);
         V1ApiError::InternalError
     })?;
 
     for (id, order) in &data.updates {
-        sqlx::query!("UPDATE search_sections SET order_index = $1 WHERE id = $2", order, id)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| {
-                error!("Failed to update order for {}: {:?}", id, e);
-                V1ApiError::InternalError
-            })?;
+        sqlx::query!(
+            "UPDATE search_sections SET order_index = $1 WHERE id = $2",
+            order,
+            id.value()
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| {
+            error!("Failed to update order for {}: {:?}", id, e);
+            V1ApiError::InternalError
+        })?;
     }
 
     tx.commit().await.map_err(|e| {
@@ -262,10 +269,7 @@ pub async fn update_search_sections_order(
 }
 
 #[delete("/api/v1/search_sections/<id>")]
-pub async fn delete_search_section(
-    id: i64,
-    user: AuthenticatedUser,
-) -> V1ApiResponseType<()> {
+pub async fn delete_search_section(id: i64, user: AuthenticatedUser) -> V1ApiResponseType<()> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
         return Err(V1ApiError::NotAuthorized);
     }
