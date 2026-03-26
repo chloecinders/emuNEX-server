@@ -16,25 +16,43 @@ pub async fn storage(file: std::path::PathBuf) -> Result<Vec<u8>, Status> {
     let is_large_cover = key.starts_with("/covers/");
     let is_icon = key.starts_with("/icons/");
 
-    if (is_small_cover || is_large_cover || is_icon)
-        && !key.ends_with(".png")
-        && !key.ends_with(".webp")
-        && !key.ends_with(".jpg")
-        && !key.ends_with(".jpeg")
-    {
+    let extensions = [".png", ".webp", ".jpg", ".jpeg"];
+    let mut current_extension = None;
+    for ext in extensions {
+        if key.ends_with(ext) {
+            current_extension = Some(ext);
+            break;
+        }
+    }
+
+    if (is_small_cover || is_large_cover || is_icon) && current_extension.is_none() {
         return Err(Status::BadRequest);
     }
 
-    match crate::utils::s3::download_object(&key).await {
-        Ok(data) => Ok(data),
-        Err(_) if is_small_cover || is_large_cover || is_icon => {
-            let original_key = if is_small_cover {
-                key.replacen("/covers_small/", "/covers/", 1)
-            } else if is_icon {
-                key.replacen("/icons/", "/covers/", 1)
-            } else {
-                return Err(Status::NotFound);
-            };
+    if let Ok(data) = crate::utils::s3::download_object(&key).await {
+        return Ok(data);
+    }
+
+    if is_small_cover || is_large_cover || is_icon {
+        let base_key = if is_small_cover {
+            key.replacen("/covers_small/", "/covers/", 1)
+        } else if is_icon {
+            key.replacen("/icons/", "/covers/", 1)
+        } else {
+            key.clone()
+        };
+
+        let base_key_no_ext = match current_extension {
+            Some(ext) => base_key.strip_suffix(ext).unwrap_or(&base_key).to_string(),
+            None => base_key,
+        };
+
+        for ext in extensions {
+            let original_key = format!("{}{}", base_key_no_ext, ext);
+
+            if original_key == key {
+                continue;
+            }
 
             if let Ok(original_data) = crate::utils::s3::download_object(&original_key).await {
                 if let Ok(img) = image::load_from_memory(&original_data) {
@@ -62,10 +80,10 @@ pub async fn storage(file: std::path::PathBuf) -> Result<Vec<u8>, Status> {
                     }
                 }
             }
-            Err(Status::NotFound)
         }
-        Err(_) => Err(Status::NotFound),
     }
+
+    Err(Status::NotFound)
 }
 
 pub struct CorsResponse;

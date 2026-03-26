@@ -154,7 +154,7 @@ class EmunexBulkImportPage extends LitElement {
       });
 
       const result = await response.json();
-      
+
       if (response.ok) {
         this.statusMsg = result.data || "Processing completed successfully!";
         this.statusType = "success";
