@@ -4,6 +4,7 @@ Remote Emulation & Library Management.
 emuNEX is a service, think of it like Steam, but for emulators. This server will get client connections to download emulators and games. In the future it could handle features such as profiles/friends.
 
 Find the source code for the client here: https://github.com/chloecinders/emuNEX-client
+Join the Discord server for official updates for the client and the server: https://discord.gg/geFEWKE8Hp
 
 ## (Legal) Disclaimer
 
