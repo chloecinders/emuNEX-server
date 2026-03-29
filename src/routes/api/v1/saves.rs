@@ -1,5 +1,3 @@
-use std::{collections::HashMap, path::PathBuf};
-
 use base64::{Engine as _, engine::general_purpose};
 use rocket::{get, post, serde::json::Json};
 use serde::Serialize;
@@ -15,8 +13,15 @@ use crate::{
 };
 
 #[derive(serde::Deserialize)]
+pub struct V1SaveUploadFile {
+    pub hash: String,
+    pub path: String,
+    pub content: String,
+}
+
+#[derive(serde::Deserialize)]
 pub struct V1SaveUploadRequest {
-    pub files: HashMap<String, String>,
+    pub files: Vec<V1SaveUploadFile>,
 }
 
 #[post("/api/v1/roms/<id>/save/<version_id>", data = "<data>")]
@@ -26,18 +31,26 @@ pub async fn upload_save(
     data: Json<V1SaveUploadRequest>,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<()> {
-    for (file_name, b64_content) in data.files.iter() {
-        let buffer = general_purpose::STANDARD.decode(b64_content).map_err(|e| {
-            error!("Failed to decode base64 for file '{}': {:?}", file_name, e);
-            V1ApiError::BadRequest
-        })?;
+    for file in data.files.iter() {
+        let buffer = general_purpose::STANDARD
+            .decode(&file.content)
+            .map_err(|e| {
+                error!("Failed to decode base64 for file '{}': {:?}", file.path, e);
+                V1ApiError::BadRequest
+            })?;
 
-        let save_path = format!("/saves/{}/{}/{}/{}", user.id.value(), id, version_id, file_name);
+        let save_path = format!(
+            "/saves/{}/{}/{}/{}",
+            user.id.value(),
+            id,
+            version_id,
+            file.hash
+        );
 
         upload_object(&save_path, &buffer).await.map_err(|e| {
             error!(
                 "Failed to upload save file '{}' to '{}': {:?}",
-                file_name, save_path, e
+                file.path, save_path, e
             );
             V1ApiError::InternalError
         })?;
@@ -51,7 +64,7 @@ pub async fn upload_save(
             user.id.value(),
             id,
             version_id,
-            file_name,
+            file.path,
             save_path
         )
         .execute(&*SQL)
@@ -59,7 +72,7 @@ pub async fn upload_save(
         .map_err(|e| {
             error!(
                 "Database error inserting save file '{}': {:?}",
-                file_name, e
+                file.path, e
             );
             V1ApiError::InternalError
         })?;
@@ -68,14 +81,19 @@ pub async fn upload_save(
     Ok(V1ApiResponse(()))
 }
 
-#[get("/api/v1/roms/<id>/save/<version_id>/<file_name>", rank = 1)]
+#[derive(serde::Deserialize)]
+pub struct V1SaveDownloadRequest {
+    pub path: String,
+}
+
+#[post("/api/v1/roms/<id>/save/<version_id>/download", data = "<data>")]
 pub async fn download_save_file(
     id: String,
     version_id: i64,
-    file_name: PathBuf,
+    data: Json<V1SaveDownloadRequest>,
     user: AuthenticatedUser,
 ) -> Result<Vec<u8>, V1ApiError> {
-    let file_name_str = file_name.to_str().ok_or(V1ApiError::BadRequest)?;
+    let file_name_str = &data.path;
 
     let record = sqlx::query!(
         "SELECT save_path FROM user_save_files

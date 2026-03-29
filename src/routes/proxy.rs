@@ -12,6 +12,10 @@ pub async fn storage(file: std::path::PathBuf) -> Result<Vec<u8>, Status> {
     let display_path = file.display().to_string().replace("\\", "/");
     let key = format!("/{}", display_path);
 
+    if key.starts_with("/saves/") {
+        return Err(Status::Forbidden);
+    }
+
     let is_small_cover = key.starts_with("/covers_small/");
     let is_large_cover = key.starts_with("/covers/");
     let is_icon = key.starts_with("/icons/");
