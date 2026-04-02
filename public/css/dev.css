@@ -31,6 +31,35 @@
     --shadow-subtle: 0 2px 8px rgba(230, 107, 29, 0.08);
     --shadow-md: 0 4px 20px rgba(230, 107, 29, 0.12);
     --shadow-lg: 0 8px 32px rgba(40, 20, 10, 0.15);
+
+    --color-dot-pattern: rgba(0, 0, 0, 0.08);
+
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-border: rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="dark"] {
+    --color-primary: #f0813a;
+    --color-primary-light: #ffa060;
+    --color-primary-dark: #d4621e;
+    --color-secondary: oklch(0.32 0.08 50);
+    --color-accent: #9f8fe0;
+    --color-background: oklch(0.18 0.02 278);
+    --color-surface: oklch(0.22 0.02 278);
+    --color-surface-variant: oklch(0.26 0.02 278);
+    --color-text: oklch(0.95 0.01 278);
+    --color-text-muted: oklch(0.75 0.01 278);
+    --color-border: oklch(0.32 0.02 278);
+    --color-border-hover: oklch(0.40 0.02 278);
+
+    --shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+
+    --color-dot-pattern: oklch(0.30 0.02 278);
+
+    --glass-bg: oklch(0.25 0.02 278 / 0.8);
+    --glass-border: rgba(255, 255, 255, 0.1);
 }
 
 * {
@@ -43,7 +72,7 @@ body {
     font-family: "Inter", sans-serif;
     color: var(--color-text);
     background-color: var(--color-background);
-    background-image: radial-gradient(#dcdcdc var(--spacing-xxs), transparent var(--spacing-xxs));
+    background-image: radial-gradient(var(--color-dot-pattern) var(--spacing-xxs), transparent var(--spacing-xxs));
     background-size: 20px 20px;
     background-attachment: fixed;
     min-height: 100vh;
@@ -51,6 +80,7 @@ body {
     align-items: center;
     justify-content: center;
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 .auth-container {
@@ -221,6 +251,8 @@ body {
     padding: var(--spacing-xs) var(--spacing-sm);
     font-size: 0.85rem;
     width: 100%;
+    color: var(--color-text);
+    background: transparent;
 }
 
 .tag-input-wrapper input:focus {
@@ -310,6 +342,7 @@ textarea {
     font-family: inherit;
     font-size: 0.95rem;
     font-weight: 500;
+    color: var(--color-text);
     transition: all 0.2s;
     width: 100%;
 }

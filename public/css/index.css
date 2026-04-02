@@ -1,0 +1,82 @@
+:root {
+    --color-primary: oklch(0.529 0.13007 289.297);
+    --color-primary-light: oklch(0.70 0.14 289.297);
+    --color-primary-dark: oklch(0.35 0.14 289.297);
+    --color-secondary: oklch(0.82 0.14 289.297);
+    --color-accent: oklch(0.70 0.18 50);
+    --color-background: #f0f0f0;
+    --color-surface: #ffffff;
+    --color-surface-variant: #f8f8fc;
+    --color-text: #2d2d3a;
+    --color-text-muted: #6e6e80;
+    --color-text-on-primary: #ffffff;
+    --color-border: #e2e2ec;
+    --color-border-hover: #d0d0e0;
+    --color-danger: oklch(0.60 0.20 25);
+    --color-success: oklch(0.70 0.18 140);
+    --color-error: #e53e3e;
+
+    --shadow-subtle: 0 2px 8px rgba(100, 80, 180, 0.08);
+    --shadow-md: 0 4px 20px rgba(100, 80, 180, 0.12);
+    --shadow-lg: 0 8px 32px rgba(10, 10, 20, 0.15);
+
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-border: rgba(255, 255, 255, 0.3);
+
+    --color-dot-pattern: rgba(0, 0, 0, 0.08);
+    --color-scrollbar-thumb: #d0d0e0;
+    --color-scrollbar-track: transparent;
+}
+
+[data-theme="dark"] {
+    --color-primary: oklch(0.65 0.14 289.297);
+    --color-primary-light: oklch(0.75 0.14 289.297);
+    --color-primary-dark: oklch(0.50 0.14 289.297);
+    --color-secondary: oklch(0.40 0.14 289.297);
+    --color-accent: oklch(0.75 0.18 50);
+    --color-background: oklch(0.18 0.02 278);
+    --color-surface: oklch(0.22 0.02 278);
+    --color-surface-variant: oklch(0.26 0.02 278);
+    --color-text: oklch(0.95 0.01 278);
+    --color-text-muted: oklch(0.75 0.01 278);
+    --color-text-on-primary: oklch(1.00 0.00 0);
+    --color-border: oklch(0.32 0.02 278);
+    --color-border-hover: oklch(0.40 0.02 278);
+    --color-error: #fc8181;
+
+    --shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+
+    --glass-bg: oklch(0.25 0.02 278 / 0.8);
+    --glass-border: rgba(255, 255, 255, 0.1);
+
+    --color-dot-pattern: oklch(0.30 0.02 278);
+    --color-scrollbar-thumb: oklch(0.35 0.02 278);
+    --color-scrollbar-track: transparent;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+body {
+    background-color: var(--color-background);
+    background-image: radial-gradient(var(--color-dot-pattern) 2px, transparent 2px);
+    background-size: 20px 20px;
+    background-attachment: fixed;
+    color: var(--color-text);
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-scrollbar-track); }
+::-webkit-scrollbar-thumb { background: var(--color-scrollbar-thumb); border-radius: 9999px; }

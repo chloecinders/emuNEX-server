@@ -35,8 +35,7 @@ pub async fn upload_save(
         let buffer = general_purpose::STANDARD
             .decode(&file.content)
             .map_err(|e| {
-                error!("Failed to decode base64 for file '{}': {:?}", file.path, e);
-                V1ApiError::BadRequest
+                V1ApiError::InvalidFile
             })?;
 
         let save_path = format!(
@@ -74,7 +73,7 @@ pub async fn upload_save(
                 "Database error inserting save file '{}': {:?}",
                 file.path, e
             );
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?;
     }
 
@@ -110,9 +109,9 @@ pub async fn download_save_file(
             "Database error fetching save file for id {}, version {}: {:?}",
             id, version_id, e
         );
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?
-    .ok_or(V1ApiError::NotFound)?;
+    .ok_or(V1ApiError::SaveNotFound)?;
 
     let bytes = download_object(&record.save_path).await.map_err(|e| {
         error!(
@@ -152,9 +151,9 @@ pub async fn get_latest_save(
             "Database error fetching latest version for rom {}: {:?}",
             id, e
         );
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?
-    .ok_or(V1ApiError::NotFound)?;
+    .ok_or(V1ApiError::SaveNotFound)?;
 
     let files = sqlx::query_as!(
         V1SaveFileMetadataResponse,
@@ -171,7 +170,46 @@ pub async fn get_latest_save(
             "Database error fetching save metadata for rom {}, version {}: {:?}",
             id, latest_version.version_id, e
         );
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
+    })?;
+
+    Ok(V1ApiResponse(files))
+}
+
+#[derive(Serialize)]
+pub struct V1UserSaveFlatRecord {
+    pub rom_id: String,
+    pub title: String,
+    pub realname: Option<String>,
+    pub console: String,
+    pub version_id: i64,
+    pub file_name: String,
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+impl V1ApiResponseTrait for Vec<V1UserSaveFlatRecord> {}
+
+#[get("/api/v1/saves")]
+pub async fn get_all_saves(
+    user: AuthenticatedUser,
+) -> V1ApiResponseType<Vec<V1UserSaveFlatRecord>> {
+    let files = sqlx::query_as!(
+        V1UserSaveFlatRecord,
+        "SELECT 
+            s.rom_id, b.title, b.realname, b.console, s.version_id, s.file_name, s.created_at
+         FROM 
+            user_save_files s
+         JOIN 
+            roms b ON s.rom_id = b.id
+         WHERE 
+            s.user_id = $1
+         ORDER BY COALESCE(b.realname, b.title) ASC, s.version_id DESC",
+        user.id.value()
+    )
+    .fetch_all(&*SQL)
+    .await
+    .map_err(|e| {
+        error!("Database error fetching all user saves: {:?}", e);
+        V1ApiError::DatabaseError
     })?;
 
     Ok(V1ApiResponse(files))

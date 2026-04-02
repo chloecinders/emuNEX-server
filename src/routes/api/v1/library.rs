@@ -29,7 +29,7 @@ pub async fn get_shelves(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1She
     )
     .fetch_all(&*SQL)
     .await
-    .map_err(|e| { error!("{:?}", e); V1ApiError::InternalError })?;
+    .map_err(|e| { error!("{:?}", e); V1ApiError::DatabaseError })?;
 
     let mut response = Vec::new();
 
@@ -51,7 +51,7 @@ pub async fn get_shelves(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1She
         .await
         .map_err(|e| {
             error!("{:?}", e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?;
 
         response.push(V1ShelfResponse {
@@ -86,7 +86,7 @@ pub async fn create_shelf(
     )
     .execute(&*SQL)
     .await
-    .map_err(|e| { error!("{:?}", e); V1ApiError::InternalError })?;
+    .map_err(|e| { error!("{:?}", e); V1ApiError::DatabaseError })?;
 
     Ok(V1ApiResponse(Id::new(id)))
 }
@@ -112,9 +112,9 @@ pub async fn update_shelf(
     .await
     .map_err(|e| {
         error!("{:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?
-    .ok_or(V1ApiError::NotFound)?;
+    .ok_or(V1ApiError::LibraryItemNotFound)?;
 
     if let Some(name) = &data.name {
         sqlx::query!(
@@ -126,7 +126,7 @@ pub async fn update_shelf(
         .await
         .map_err(|e| {
             error!("{:?}", e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?;
     }
 
@@ -140,7 +140,7 @@ pub async fn update_shelf(
         .await
         .map_err(|e| {
             error!("{:?}", e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?;
     }
 
@@ -158,11 +158,11 @@ pub async fn delete_shelf(id: i64, user: AuthenticatedUser) -> V1ApiResponseType
     .await
     .map_err(|e| {
         error!("{:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     if result.rows_affected() == 0 {
-        return Err(V1ApiError::NotFound);
+        return Err(V1ApiError::LibraryItemNotFound);
     }
 
     Ok(V1ApiResponse(()))
@@ -183,9 +183,9 @@ pub async fn add_rom_to_shelf(
     .await
     .map_err(|e| {
         error!("{:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?
-    .ok_or(V1ApiError::NotFound)?;
+    .ok_or(V1ApiError::LibraryItemNotFound)?;
 
     sqlx::query!(
         "INSERT INTO shelf_roms (shelf_id, rom_id, sort_order)
@@ -196,7 +196,7 @@ pub async fn add_rom_to_shelf(
     )
     .execute(&*SQL)
     .await
-    .map_err(|e| { error!("{:?}", e); V1ApiError::InternalError })?;
+    .map_err(|e| { error!("{:?}", e); V1ApiError::DatabaseError })?;
 
     Ok(V1ApiResponse(()))
 }
@@ -216,9 +216,9 @@ pub async fn remove_rom_from_shelf(
     .await
     .map_err(|e| {
         error!("{:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?
-    .ok_or(V1ApiError::NotFound)?;
+    .ok_or(V1ApiError::LibraryItemNotFound)?;
 
     sqlx::query!(
         "DELETE FROM shelf_roms WHERE shelf_id = $1 AND rom_id = $2",
@@ -229,7 +229,7 @@ pub async fn remove_rom_from_shelf(
     .await
     .map_err(|e| {
         error!("{:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     Ok(V1ApiResponse(()))
@@ -255,13 +255,13 @@ pub async fn update_rom_order(
     .await
     .map_err(|e| {
         error!("{:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?
-    .ok_or(V1ApiError::NotFound)?;
+    .ok_or(V1ApiError::LibraryItemNotFound)?;
 
     let mut tx = SQL.begin().await.map_err(|e| {
         error!("{:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     for (index, rom_id) in data.rom_ids.iter().enumerate() {
@@ -275,13 +275,13 @@ pub async fn update_rom_order(
         .await
         .map_err(|e| {
             error!("{:?}", e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?;
     }
 
     tx.commit().await.map_err(|e| {
         error!("{:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     Ok(V1ApiResponse(()))

@@ -36,7 +36,7 @@ pub async fn get_search_sections(
         .await
         .map_err(|e| {
             error!("Failed to fetch search sections: {:?}", e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?;
 
     let mut out = Vec::new();
@@ -52,7 +52,7 @@ pub async fn get_search_sections(
                 .await
                 .map_err(|e| {
                     error!("Failed to fetch custom section roms: {:?}", e);
-                    V1ApiError::InternalError
+                    V1ApiError::DatabaseError
                 })?;
             custom_roms = Some(rom_ids.into_iter().map(|r| r.rom_id).collect());
         }
@@ -87,14 +87,14 @@ pub async fn create_search_section(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<String> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let section_id = crate::utils::snowflake::next_id();
 
     let mut tx = SQL.begin().await.map_err(|e| {
         error!("Failed to begin transaction: {:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     sqlx::query!(
@@ -110,7 +110,7 @@ pub async fn create_search_section(
     .await
     .map_err(|e| {
         error!("Failed to insert search section: {:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     if data.section_type == "custom" {
@@ -126,7 +126,7 @@ pub async fn create_search_section(
                 .await
                 .map_err(|e| {
                     error!("Failed to insert section roms: {:?}", e);
-                    V1ApiError::InternalError
+                    V1ApiError::DatabaseError
                 })?;
             }
         }
@@ -134,7 +134,7 @@ pub async fn create_search_section(
 
     tx.commit().await.map_err(|e| {
         error!("Failed to commit transaction: {:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     Ok(V1ApiResponse(section_id.to_string()))
@@ -157,12 +157,12 @@ pub async fn update_search_section(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<String> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let mut tx = SQL.begin().await.map_err(|e| {
         error!("Failed to begin transaction: {:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     sqlx::query!(
@@ -178,7 +178,7 @@ pub async fn update_search_section(
     .await
     .map_err(|e| {
         error!("Failed to update search section: {:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     if data.section_type == "custom" {
@@ -187,7 +187,7 @@ pub async fn update_search_section(
             .await
             .map_err(|e| {
                 error!("Failed to clear old section roms: {:?}", e);
-                V1ApiError::InternalError
+                V1ApiError::DatabaseError
             })?;
 
         if let Some(roms) = &data.roms {
@@ -202,7 +202,7 @@ pub async fn update_search_section(
                 .await
                 .map_err(|e| {
                     error!("Failed to insert section roms: {:?}", e);
-                    V1ApiError::InternalError
+                    V1ApiError::DatabaseError
                 })?;
             }
         }
@@ -215,13 +215,13 @@ pub async fn update_search_section(
                     "Failed to clear section roms (type changed from custom): {:?}",
                     e
                 );
-                V1ApiError::InternalError
+                V1ApiError::DatabaseError
             })?;
     }
 
     tx.commit().await.map_err(|e| {
         error!("Failed to commit transaction: {:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     Ok(V1ApiResponse(id.to_string()))
@@ -238,12 +238,12 @@ pub async fn update_search_sections_order(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<()> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let mut tx = SQL.begin().await.map_err(|e| {
         error!("Failed to begin transaction: {:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     for (id, order) in &data.updates {
@@ -256,13 +256,13 @@ pub async fn update_search_sections_order(
         .await
         .map_err(|e| {
             error!("Failed to update order for {}: {:?}", id, e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?;
     }
 
     tx.commit().await.map_err(|e| {
         error!("Failed to commit transaction: {:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     Ok(V1ApiResponse(()))
@@ -271,7 +271,7 @@ pub async fn update_search_sections_order(
 #[delete("/api/v1/search_sections/<id>")]
 pub async fn delete_search_section(id: i64, user: AuthenticatedUser) -> V1ApiResponseType<()> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     sqlx::query!("DELETE FROM search_sections WHERE id = $1", id)
@@ -279,7 +279,7 @@ pub async fn delete_search_section(id: i64, user: AuthenticatedUser) -> V1ApiRes
         .await
         .map_err(|e| {
             error!("Failed to delete search section {}: {:?}", id, e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?;
 
     Ok(V1ApiResponse(()))

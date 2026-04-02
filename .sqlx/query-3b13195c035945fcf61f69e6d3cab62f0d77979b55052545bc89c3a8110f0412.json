@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT claimed_by FROM rom_reports WHERE id = $1 AND status = 'open'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "claimed_by",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "3b13195c035945fcf61f69e6d3cab62f0d77979b55052545bc89c3a8110f0412"
+}

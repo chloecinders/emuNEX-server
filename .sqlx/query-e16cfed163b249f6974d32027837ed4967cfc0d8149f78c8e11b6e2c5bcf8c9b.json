@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT theme, avatar_path, profile_color FROM users WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "theme",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "avatar_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "profile_color",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "e16cfed163b249f6974d32027837ed4967cfc0d8149f78c8e11b6e2c5bcf8c9b"
+}

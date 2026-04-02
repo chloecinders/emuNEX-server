@@ -262,7 +262,7 @@ pub async fn get_rom_single(
             error!("Failed to fetch rom id {}: {:?}", id, e);
             V1ApiError::InternalError
         })?
-        .ok_or(V1ApiError::NotFound)?;
+        .ok_or(V1ApiError::RomNotFound)?;
 
     Ok(V1ApiResponse(rom))
 }
@@ -323,7 +323,7 @@ pub async fn get_rom_versions(
         .fetch_optional(&*SQL)
         .await
         .map_err(|_| V1ApiError::InternalError)?
-        .ok_or(V1ApiError::NotFound)?;
+        .ok_or(V1ApiError::RomNotFound)?;
 
     let versions = sqlx::query_as!(
         V1RomListResponse,
@@ -364,7 +364,7 @@ pub async fn upload_rom(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<String> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let rom_filename = data
@@ -514,7 +514,7 @@ pub async fn update_rom(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<String> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     sqlx::query!(
@@ -555,7 +555,7 @@ pub async fn update_rom_file(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<()> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let rom = sqlx::query!("SELECT console, rom_path FROM roms WHERE id = $1", id)
@@ -565,7 +565,7 @@ pub async fn update_rom_file(
             error!("{:?}", e);
             V1ApiError::InternalError
         })?
-        .ok_or(V1ApiError::NotFound)?;
+        .ok_or(V1ApiError::RomNotFound)?;
 
     let rom_bytes = tokio::fs::read(data.file.path().unwrap())
         .await
@@ -627,7 +627,7 @@ pub async fn update_rom_image(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<()> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let _rom = sqlx::query!("SELECT image_hash, console FROM roms WHERE id = $1", id)
@@ -637,7 +637,7 @@ pub async fn update_rom_image(
             error!("{:?}", e);
             V1ApiError::InternalError
         })?
-        .ok_or(V1ApiError::NotFound)?;
+        .ok_or(V1ApiError::RomNotFound)?;
 
     let img_bytes = tokio::fs::read(data.image.path().unwrap())
         .await
@@ -690,7 +690,7 @@ pub async fn update_rom_image(
 #[delete("/api/v1/roms/<id>")]
 pub async fn delete_rom(id: String, user: AuthenticatedUser) -> V1ApiResponseType<()> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let rom = sqlx::query!("SELECT rom_path, image_hash, console FROM roms WHERE id = $1", id)
@@ -700,7 +700,7 @@ pub async fn delete_rom(id: String, user: AuthenticatedUser) -> V1ApiResponseTyp
             error!("Failed to fetch rom for deletion: {:?}", e);
             V1ApiError::InternalError
         })?
-        .ok_or(V1ApiError::NotFound)?;
+        .ok_or(V1ApiError::RomNotFound)?;
 
     let _ = crate::utils::s3::delete_object(&rom.rom_path).await;
     let _ = crate::utils::s3::delete_object(&format!("/covers/{}/{}/{}.webp", rom.console, id, rom.image_hash)).await;
@@ -852,7 +852,7 @@ pub async fn bulk_upload_roms(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<String> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let temp_path =

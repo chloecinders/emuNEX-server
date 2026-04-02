@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script>(function(){var t=localStorage.getItem('emunex-theme')||'light';if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})();</script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Saves | emuNEX</title>
+    <script type="importmap">{% raw %}
+      {
+        "imports": {
+          "lit": "https://esm.sh/lit@3",
+          "lit/decorators.js": "https://esm.sh/lit@3/decorators.js",
+          "lucide": "https://esm.sh/lucide@latest"
+        }
+      }
+    {% endraw %}</script>
+    <link rel="stylesheet" href="/public/css/index.css">
+      <link rel="icon" type="image/png" href="/public/images/32x32.png">
+  </head>
+  <body>
+    <emunex-saves-manage-page></emunex-saves-manage-page>
+    <script type="module" src="/public/js/pages/saves-manage.js"></script>
+  </body>
+</html>

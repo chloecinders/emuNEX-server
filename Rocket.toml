@@ -1,8 +1,9 @@
 [default]
-adress = "127.0.0.1"
+address = "127.0.0.1"
 port = 8000
 
 [default.limits]
 form = "10 GB"
 data-form = "10 GB"
 file = "10 GB"
+json = "20 MB"

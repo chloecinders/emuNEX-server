@@ -1,0 +1,1 @@
+ALTER TABLE rom_reports ADD COLUMN claimed_by BIGINT REFERENCES users(id) ON DELETE SET NULL;

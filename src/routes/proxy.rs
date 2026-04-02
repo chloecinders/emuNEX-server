@@ -19,6 +19,7 @@ pub async fn storage(file: std::path::PathBuf) -> Result<Vec<u8>, Status> {
     let is_small_cover = key.starts_with("/covers_small/");
     let is_large_cover = key.starts_with("/covers/");
     let is_icon = key.starts_with("/icons/");
+    let is_avatar = key.starts_with("/avatars/");
 
     let extensions = [".png", ".webp", ".jpg", ".jpeg"];
     let mut current_extension = None;

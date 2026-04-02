@@ -17,6 +17,36 @@ pub struct AuthenticatedUser {
     pub role: UserRole,
 }
 
+#[derive(Debug)]
+pub struct AuthToken(pub String);
+
+#[rocket::async_trait]
+impl<'r> rocket::request::FromRequest<'r> for AuthToken {
+    type Error = V1ApiError;
+
+    async fn from_request(
+        req: &'r rocket::Request<'_>,
+    ) -> rocket::request::Outcome<Self, Self::Error> {
+        let token = req
+            .cookies()
+            .get("token")
+            .map(|c| c.value().to_string())
+            .or_else(|| {
+                req.headers()
+                    .get_one("Authorization")
+                    .map(|h| h.to_string())
+            });
+
+        match token {
+            Some(t) => rocket::request::Outcome::Success(AuthToken(t)),
+            None => rocket::request::Outcome::Error((
+                rocket::http::Status::Unauthorized,
+                V1ApiError::NotAuthorized,
+            )),
+        }
+    }
+}
+
 #[rocket::async_trait]
 impl<'r> rocket::request::FromRequest<'r> for AuthenticatedUser {
     type Error = V1ApiError;

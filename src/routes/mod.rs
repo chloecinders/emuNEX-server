@@ -6,5 +6,8 @@ pub mod emulators;
 pub mod index;
 pub mod proxy;
 pub mod roms;
+pub mod profile;
 pub mod search_sections;
 pub mod users;
+pub mod reports;
+pub mod saves;

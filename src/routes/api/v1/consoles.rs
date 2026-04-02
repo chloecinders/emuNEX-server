@@ -34,7 +34,7 @@ pub async fn get_consoles(_user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1C
     .await
     .map_err(|e| {
         eprintln!("Database error: {:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     Ok(V1ApiResponse(consoles))
@@ -52,7 +52,7 @@ pub async fn upload_console(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<Id> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let id = next_id();
@@ -68,7 +68,7 @@ pub async fn upload_console(
     )
     .execute(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?;
+    .map_err(|_| V1ApiError::DatabaseError)?;
 
     Ok(V1ApiResponse(Id::new(id)))
 }
@@ -85,7 +85,7 @@ pub async fn update_console_metadata(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<String> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     sqlx::query!(
@@ -95,7 +95,7 @@ pub async fn update_console_metadata(
     )
     .execute(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?;
+    .map_err(|_| V1ApiError::DatabaseError)?;
 
     Ok(V1ApiResponse(name))
 }
@@ -103,7 +103,7 @@ pub async fn update_console_metadata(
 #[delete("/api/v1/consoles/<name>")]
 pub async fn delete_console(name: String, user: AuthenticatedUser) -> V1ApiResponseType<()> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     sqlx::query!("DELETE FROM consoles WHERE name = $1", name)
@@ -111,7 +111,7 @@ pub async fn delete_console(name: String, user: AuthenticatedUser) -> V1ApiRespo
         .await
         .map_err(|e| {
             eprintln!("Failed to delete console {}: {:?}", name, e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?;
 
     Ok(V1ApiResponse(()))

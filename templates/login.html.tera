@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <script>(function(){var t=localStorage.getItem('emunex-theme')||'light';if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})();</script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Authentication | emuNEX</title>
@@ -8,14 +9,16 @@
       {
         "imports": {
           "lit": "https://esm.sh/lit@3",
-          "lit/decorators.js": "https://esm.sh/lit@3/decorators.js"
+          "lit/decorators.js": "https://esm.sh/lit@3/decorators.js",
+          "lucide": "https://esm.sh/lucide@latest"
         }
       }
     {% endraw %}</script>
     <link rel="stylesheet" href="/public/css/auth.css">
+      <link rel="icon" type="image/png" href="/public/images/32x32.png">
   </head>
     <body>
         <emunex-auth-page auth-type="{{ auth_type }}" domain="{{ domain | safe }}"></emunex-auth-page>
-        <script type="module" src="/public/js/auth-page.js"></script>
+        <script type="module" src="/public/js/pages/auth.js"></script>
     </body>
 </html>

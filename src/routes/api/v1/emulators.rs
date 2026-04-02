@@ -80,7 +80,7 @@ pub async fn get_emulators_for_platform(
             "Database error fetching emulators for console '{}', platform '{}': {:?}",
             console, platform, e
         );
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     Ok(V1ApiResponse(emulators))
@@ -116,7 +116,7 @@ pub async fn get_all_emulators(
     .await
     .map_err(|e| {
         error!("Database error fetching all emulators: {:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     Ok(V1ApiResponse(emulators))
@@ -146,7 +146,7 @@ pub async fn emulator_upload(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<Id> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let bin_ext = data
@@ -169,7 +169,7 @@ pub async fn emulator_upload(
         .await
         .map_err(|e| {
             error!("Failed to read emulator binary from temp storage: {:?}", e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?;
 
     let file_size = bin_bytes.len() as i64;
@@ -188,7 +188,7 @@ pub async fn emulator_upload(
             "Failed to upload emulator binary to '{}': {:?}",
             binary_path, e
         );
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     let id = next_id();
@@ -214,7 +214,7 @@ pub async fn emulator_upload(
     .await
     .map_err(|e| {
         error!("Database error inserting emulator '{}': {:?}", data.name, e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     Ok(V1ApiResponse(Id::new(id)))
@@ -240,7 +240,7 @@ pub async fn update_emulator(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<Id> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     sqlx::query!(
@@ -260,7 +260,7 @@ pub async fn update_emulator(
     .await
     .map_err(|e| {
         error!("Failed to update emulator id {}: {:?}", id, e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     Ok(V1ApiResponse(Id::new(id)))
@@ -282,7 +282,7 @@ pub async fn update_emulator_binary(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<()> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let emu = sqlx::query!("SELECT binary_path FROM emulators WHERE id = $1", id)
@@ -290,15 +290,15 @@ pub async fn update_emulator_binary(
         .await
         .map_err(|e| {
             error!("{:?}", e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?
-        .ok_or(V1ApiError::NotFound)?;
+        .ok_or(V1ApiError::EmulatorNotFound)?;
 
     let bin_bytes = tokio::fs::read(data.binary.path().unwrap())
         .await
         .map_err(|e| {
             error!("{:?}", e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?;
 
     let file_size = bin_bytes.len() as i64;
@@ -308,7 +308,7 @@ pub async fn update_emulator_binary(
         .await
         .map_err(|e| {
             error!("Failed to upload binary: {:?}", e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?;
 
     sqlx::query!(
@@ -321,7 +321,7 @@ pub async fn update_emulator_binary(
     .await
     .map_err(|e| {
         error!("{:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     Ok(V1ApiResponse(()))
@@ -330,7 +330,7 @@ pub async fn update_emulator_binary(
 #[delete("/api/v1/emulators/<id>")]
 pub async fn delete_emulator(id: i64, user: AuthenticatedUser) -> V1ApiResponseType<()> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let emu = sqlx::query!("SELECT binary_path FROM emulators WHERE id = $1", id)
@@ -338,9 +338,9 @@ pub async fn delete_emulator(id: i64, user: AuthenticatedUser) -> V1ApiResponseT
         .await
         .map_err(|e| {
             error!("Failed to fetch emulator for deletion: {:?}", e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?
-        .ok_or(V1ApiError::NotFound)?;
+        .ok_or(V1ApiError::EmulatorNotFound)?;
 
     let _ = crate::utils::s3::delete_object(&emu.binary_path).await;
 
@@ -349,7 +349,7 @@ pub async fn delete_emulator(id: i64, user: AuthenticatedUser) -> V1ApiResponseT
         .await
         .map_err(|e| {
             error!("Failed to delete emulator id {}: {:?}", id, e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?;
 
     Ok(V1ApiResponse(()))

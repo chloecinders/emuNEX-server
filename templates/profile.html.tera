@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+    <script>(function(){var t=localStorage.getItem('emunex-theme')||'light';if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})();</script>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>emuNEX | Profile</title>
+        <link rel="stylesheet" href="/public/css/index.css" />
+        <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
+        <script type="importmap">
+            {
+                "imports": {
+                    "lit": "https://esm.sh/lit@3.2.1",
+                    "lit/": "https://esm.sh/lit@3.2.1/",
+                    "@lit/reactive-element": "https://esm.sh/@lit/reactive-element@2.0.4",
+                    "@lit/reactive-element/": "https://esm.sh/@lit/reactive-element@2.0.4/",
+                    "lit-html": "https://esm.sh/lit-html@3.2.1",
+                    "lit-html/": "https://esm.sh/lit-html@3.2.1/",
+                    "lit-element/": "https://esm.sh/lit-element@4.1.1/",
+                    "lucide": "https://esm.sh/lucide@latest"
+                }
+            }
+        </script>
+        <script type="module" src="/public/js/pages/profile.js"></script>
+        <link rel="icon" type="image/png" href="/public/images/32x32.png">
+  </head>
+    <body class="light-mode" style="margin: 0; padding: 0;">
+        <emunex-profile-page username="{{ current_user.username }}" domain="{{ domain | safe }}"></emunex-profile-page>
+    </body>
+</html>

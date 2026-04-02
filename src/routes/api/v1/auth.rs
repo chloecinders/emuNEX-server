@@ -2,8 +2,9 @@ use argon2::{
     Argon2,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
-use rocket::{get, post, serde::json::Json};
+use rocket::{get, post, put, serde::json::Json};
 use serde::{Deserialize, Serialize};
+use tracing::error;
 use uuid::Uuid;
 
 use crate::{
@@ -12,7 +13,7 @@ use crate::{
         V1ApiResponse, V1ApiResponseType,
         api_error::V1ApiError,
         api_response::V1ApiResponseTrait,
-        v1::guards::{AuthenticatedUser, UserRole},
+        v1::guards::{AuthToken, AuthenticatedUser, UserRole},
     },
     utils::{id::Id, snowflake::next_id},
 };
@@ -60,7 +61,7 @@ pub async fn register(
     .fetch_optional(&*SQL)
     .await
     .map_err(|_| V1ApiError::InternalError)?
-    .ok_or(V1ApiError::NotFound)?;
+    .ok_or(V1ApiError::InvalidInviteCode)?;
 
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
@@ -84,7 +85,7 @@ pub async fn register(
     .map_err(|e| {
         if let Some(db_err) = e.as_database_error() {
             if db_err.code() == Some(std::borrow::Cow::Borrowed("23505")) {
-                return V1ApiError::Conflict;
+                return V1ApiError::UsernameTaken;
             }
         }
         V1ApiError::InternalError
@@ -133,14 +134,14 @@ pub async fn login(request_data: Json<V1AuthLoginRequest>) -> V1ApiResponseType<
     )
     .fetch_optional(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?
-    .ok_or(V1ApiError::NotFound)?;
+    .map_err(|_| V1ApiError::DatabaseError)?
+    .ok_or(V1ApiError::InvalidCredentials)?;
 
     let parsed_hash = PasswordHash::new(&user.password).map_err(|_| V1ApiError::InternalError)?;
 
     Argon2::default()
         .verify_password(data.password.as_bytes(), &parsed_hash)
-        .map_err(|_| V1ApiError::NotAuthorized)?;
+        .map_err(|_| V1ApiError::InvalidCredentials)?;
 
     let token = Uuid::new_v4().to_string();
     let token_id = next_id();
@@ -153,7 +154,7 @@ pub async fn login(request_data: Json<V1AuthLoginRequest>) -> V1ApiResponseType<
     )
     .execute(&*SQL)
     .await
-    .map_err(|_| V1ApiError::NotAuthorized)?;
+    .map_err(|_| V1ApiError::DatabaseError)?;
 
     Ok(V1ApiResponse(V1AuthResponse { token }))
 }
@@ -163,15 +164,262 @@ pub struct V1AuthMeResponse {
     id: Id,
     username: String,
     role: UserRole,
+    theme: String,
+    avatar_path: Option<String>,
+    profile_color: String,
 }
 
 impl V1ApiResponseTrait for V1AuthMeResponse {}
 
 #[get("/api/v1/users/@me")]
 pub async fn me(user: AuthenticatedUser) -> V1ApiResponseType<V1AuthMeResponse> {
+    let row = sqlx::query!(
+        "SELECT theme, avatar_path, profile_color FROM users WHERE id = $1",
+        user.id.0
+    )
+    .fetch_one(&*SQL)
+    .await
+    .map_err(|_| V1ApiError::UserNotFound)?;
+
     Ok(V1ApiResponse(V1AuthMeResponse {
         id: user.id,
         username: user.username,
         role: user.role,
+        theme: row.theme,
+        avatar_path: row.avatar_path,
+        profile_color: row.profile_color,
     }))
+}
+
+#[derive(Serialize)]
+pub struct V1ThemeResponse {
+    theme: String,
+}
+
+impl V1ApiResponseTrait for V1ThemeResponse {}
+
+#[get("/api/v1/users/@me/preferences")]
+pub async fn get_preferences(user: AuthenticatedUser) -> V1ApiResponseType<V1ThemeResponse> {
+    let row = sqlx::query!("SELECT theme FROM users WHERE id = $1", user.id.0)
+        .fetch_one(&*SQL)
+        .await
+        .map_err(|_| V1ApiError::UserNotFound)?;
+
+    Ok(V1ApiResponse(V1ThemeResponse { theme: row.theme }))
+}
+
+#[derive(Deserialize)]
+pub struct V1UpdatePreferencesRequest {
+    pub theme: String,
+}
+
+#[rocket::put(
+    "/api/v1/users/@me/preferences",
+    format = "json",
+    data = "<request_data>"
+)]
+pub async fn update_preferences(
+    user: AuthenticatedUser,
+    request_data: Json<V1UpdatePreferencesRequest>,
+) -> V1ApiResponseType<String> {
+    let data = request_data.into_inner();
+    let theme = if data.theme == "dark" {
+        "dark"
+    } else {
+        "light"
+    };
+
+    sqlx::query!(
+        "UPDATE users SET theme = $1 WHERE id = $2",
+        theme,
+        user.id.0
+    )
+    .execute(&*SQL)
+    .await
+    .map_err(|_| V1ApiError::InternalError)?;
+
+    Ok(V1ApiResponse("updated".into()))
+}
+
+#[post("/api/v1/logout")]
+pub async fn logout(token: AuthToken) -> V1ApiResponseType<String> {
+    sqlx::query!("DELETE FROM user_tokens WHERE token = $1", token.0)
+        .execute(&*SQL)
+        .await
+        .map_err(|_| V1ApiError::InternalError)?;
+    Ok(V1ApiResponse("logged out".into()))
+}
+
+#[derive(Deserialize)]
+pub struct V1AuthUpdateUsernameRequest {
+    pub username: String,
+}
+
+#[rocket::put("/api/v1/users/@me/username", format = "json", data = "<request_data>")]
+pub async fn update_username(
+    user: AuthenticatedUser,
+    request_data: Json<V1AuthUpdateUsernameRequest>,
+) -> V1ApiResponseType<String> {
+    let data = request_data.into_inner();
+    let trimmed = data.username.trim();
+
+    if trimmed.is_empty() {
+        return Err(V1ApiError::InvalidUsername);
+    }
+
+    sqlx::query!(
+        "UPDATE users SET username = $1 WHERE id = $2",
+        trimmed,
+        user.id.0
+    )
+    .execute(&*SQL)
+    .await
+    .map_err(|e| {
+        if let Some(db_err) = e.as_database_error() {
+            if db_err.code() == Some(std::borrow::Cow::Borrowed("23505")) {
+                return V1ApiError::UsernameTaken;
+            }
+        }
+        V1ApiError::InternalError
+    })?;
+
+    Ok(V1ApiResponse("updated".into()))
+}
+
+#[derive(Deserialize)]
+pub struct V1AuthUpdatePasswordRequest {
+    pub current_password: String,
+    pub new_password: String,
+}
+
+#[rocket::put("/api/v1/users/@me/password", format = "json", data = "<request_data>")]
+pub async fn update_password(
+    user: AuthenticatedUser,
+    request_data: Json<V1AuthUpdatePasswordRequest>,
+) -> V1ApiResponseType<String> {
+    let data = request_data.into_inner();
+
+    let user_row = sqlx::query!("SELECT password FROM users WHERE id = $1", user.id.0)
+        .fetch_one(&*SQL)
+        .await
+        .map_err(|_| V1ApiError::UserNotFound)?;
+
+    let parsed_hash =
+        PasswordHash::new(&user_row.password).map_err(|_| V1ApiError::InternalError)?;
+
+    Argon2::default()
+        .verify_password(data.current_password.as_bytes(), &parsed_hash)
+        .map_err(|_| V1ApiError::InvalidCredentials)?;
+
+    let salt = SaltString::generate(&mut OsRng);
+    let new_hash = Argon2::default()
+        .hash_password(data.new_password.as_bytes(), &salt)
+        .map_err(|_| V1ApiError::InternalError)?
+        .to_string();
+
+    let mut tx = SQL.begin().await.map_err(|_| V1ApiError::InternalError)?;
+
+    sqlx::query!(
+        "UPDATE users SET password = $1 WHERE id = $2",
+        new_hash,
+        user.id.0
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(|_| V1ApiError::InternalError)?;
+
+    sqlx::query!("DELETE FROM user_tokens WHERE user_id = $1", user.id.0)
+        .execute(&mut *tx)
+        .await
+        .map_err(|_| V1ApiError::InternalError)?;
+
+    tx.commit().await.map_err(|_| V1ApiError::InternalError)?;
+
+    Ok(V1ApiResponse("updated".into()))
+}
+
+#[derive(Deserialize)]
+pub struct V1UploadAvatarRequest {
+    pub content: String,
+}
+
+#[put("/api/v1/users/@me/avatar", format = "json", data = "<request_data>")]
+pub async fn upload_avatar(
+    user: AuthenticatedUser,
+    request_data: Json<V1UploadAvatarRequest>,
+) -> V1ApiResponseType<String> {
+    use base64::{Engine as _, engine::general_purpose};
+
+    let data = request_data.into_inner();
+
+    let bytes = general_purpose::STANDARD
+        .decode(&data.content)
+        .map_err(|_| V1ApiError::InvalidFile)?;
+
+    if bytes.len() > 10 * 1024 * 1024 {
+        return Err(V1ApiError::InvalidFile);
+    }
+
+    let avatar_path = format!("/avatars/{}", user.id.value());
+
+    crate::utils::s3::upload_object(&avatar_path, &bytes)
+        .await
+        .map_err(|e| {
+            error!(
+                "Failed to upload avatar for user {}: {:?}",
+                user.id.value(),
+                e
+            );
+            V1ApiError::InternalError
+        })?;
+
+    sqlx::query!(
+        "UPDATE users SET avatar_path = $1 WHERE id = $2",
+        avatar_path,
+        user.id.0
+    )
+    .execute(&*SQL)
+    .await
+    .map_err(|e| {
+        error!(
+            "Failed to save avatar_path for user {}: {:?}",
+            user.id.value(),
+            e
+        );
+        V1ApiError::InternalError
+    })?;
+
+    Ok(V1ApiResponse(avatar_path))
+}
+
+#[derive(Deserialize)]
+pub struct V1UpdateProfileColorRequest {
+    pub color: String,
+}
+
+#[rocket::put(
+    "/api/v1/users/@me/profile-color",
+    format = "json",
+    data = "<request_data>"
+)]
+pub async fn update_profile_color(
+    user: AuthenticatedUser,
+    request_data: Json<V1UpdateProfileColorRequest>,
+) -> V1ApiResponseType<String> {
+    let color = request_data.into_inner().color;
+
+    if !color.starts_with('#') || color.len() != 7 {
+        return Err(V1ApiError::BadRequest);
+    }
+
+    sqlx::query!(
+        "UPDATE users SET profile_color = $1 WHERE id = $2",
+        color,
+        user.id.0
+    )
+    .execute(&*SQL)
+    .await
+    .map_err(|_| V1ApiError::InternalError)?;
+
+    Ok(V1ApiResponse(color))
 }

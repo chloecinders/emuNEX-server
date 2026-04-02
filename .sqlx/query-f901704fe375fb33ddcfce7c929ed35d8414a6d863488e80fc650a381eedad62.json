@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT \n            s.rom_id, b.title, b.realname, b.console, s.version_id, s.file_name, s.created_at\n         FROM \n            user_save_files s\n         JOIN \n            roms b ON s.rom_id = b.id\n         WHERE \n            s.user_id = $1\n         ORDER BY COALESCE(b.realname, b.title) ASC, s.version_id DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "rom_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "realname",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "console",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "version_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "file_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "f901704fe375fb33ddcfce7c929ed35d8414a6d863488e80fc650a381eedad62"
+}

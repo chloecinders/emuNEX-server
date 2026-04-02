@@ -61,14 +61,14 @@ pub async fn import_nointro(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<ImportResult> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let bytes = tokio::fs::read(data.dat_file.path().unwrap())
         .await
         .map_err(|e| {
             error!("Failed to read no-intro dat file: {:?}", e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?;
 
     let content = String::from_utf8_lossy(&bytes);
@@ -108,7 +108,7 @@ pub async fn import_nointro(
         .await
         .map_err(|e| {
             error!("Failed to upsert nointro game '{}': {:?}", game.id, e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?;
     }
 
@@ -128,7 +128,7 @@ pub async fn get_nointro_dats(_user: AuthenticatedUser) -> V1ApiResponseType<Vec
     .await
     .map_err(|e| {
         error!("Failed to fetch nointro dats: {:?}", e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     Ok(V1ApiResponse(rows))
@@ -146,7 +146,7 @@ pub async fn update_dat_notes(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<()> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     sqlx::query!(
@@ -159,7 +159,7 @@ pub async fn update_dat_notes(
     .await
     .map_err(|e| {
         error!("Failed to update notes for dat {}: {:?}", name, e);
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     Ok(V1ApiResponse(()))
@@ -190,7 +190,7 @@ pub async fn search_nointro(
         .await
         .map_err(|e| {
             error!("{:?}", e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?
     } else {
         sqlx::query_as!(
@@ -214,7 +214,7 @@ pub async fn search_nointro(
         .await
         .map_err(|e| {
             error!("{:?}", e);
-            V1ApiError::InternalError
+            V1ApiError::DatabaseError
         })?
     };
 

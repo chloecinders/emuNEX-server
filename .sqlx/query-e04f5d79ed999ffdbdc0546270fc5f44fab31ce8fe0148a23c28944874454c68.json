@@ -1,0 +1,80 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT rep.id, rep.rom_id, r.title as \"rom_title!\", rep.user_id::TEXT as \"user_id!\", u.username as \"username!\", rep.report_type, rep.description, rep.status, rep.claimed_by::TEXT as \"claimed_by?\", cu.username as \"claimed_by_username?\", rep.created_at\n         FROM rom_reports rep\n         INNER JOIN roms r ON rep.rom_id = r.id\n         INNER JOIN users u ON rep.user_id = u.id\n         LEFT JOIN users cu ON rep.claimed_by = cu.id\n         ORDER BY rep.created_at ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "rom_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "rom_title!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "user_id!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "username!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "report_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "claimed_by?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "claimed_by_username?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      true
+    ]
+  },
+  "hash": "e04f5d79ed999ffdbdc0546270fc5f44fab31ce8fe0148a23c28944874454c68"
+}

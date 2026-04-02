@@ -1,6 +1,7 @@
-use rocket::{get, response::Redirect};
+use rocket::get;
+use rocket_dyn_templates::{context, Template};
 
 #[get("/")]
-pub fn index() -> Redirect {
-    Redirect::permanent("/auth/login")
+pub fn index() -> Template {
+    Template::render("index", context! { title: "emuNEX Server" })
 }

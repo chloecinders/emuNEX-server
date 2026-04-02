@@ -30,7 +30,7 @@ impl V1ApiResponseTrait for Vec<V1UserResponse> {}
 #[rocket::get("/api/v1/users")]
 pub async fn get_users(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1UserResponse>> {
     if user.role != UserRole::Admin {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let users = sqlx::query_as!(
@@ -39,7 +39,7 @@ pub async fn get_users(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1UserR
     )
     .fetch_all(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?;
+    .map_err(|_| V1ApiError::DatabaseError)?;
 
     Ok(V1ApiResponse(users))
 }
@@ -51,7 +51,7 @@ pub async fn update_user(
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<Id> {
     if user.role != UserRole::Admin {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     sqlx::query!(
@@ -64,7 +64,7 @@ pub async fn update_user(
     )
     .execute(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?;
+    .map_err(|_| V1ApiError::DatabaseError)?;
 
     Ok(V1ApiResponse(Id::new(id)))
 }
@@ -82,7 +82,7 @@ impl V1ApiResponseTrait for Vec<V1InviteResponse> {}
 #[rocket::get("/api/v1/invites")]
 pub async fn get_invites(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1InviteResponse>> {
     if user.role != UserRole::Admin {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let invites = sqlx::query!(
@@ -97,7 +97,7 @@ pub async fn get_invites(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1Inv
     .await
     .map_err(|e| {
         error!("Database Error: {e:?}");
-        V1ApiError::InternalError
+        V1ApiError::DatabaseError
     })?;
 
     let res = invites
@@ -116,7 +116,7 @@ pub async fn get_invites(user: AuthenticatedUser) -> V1ApiResponseType<Vec<V1Inv
 #[rocket::post("/api/v1/invites")]
 pub async fn create_invite(user: AuthenticatedUser) -> V1ApiResponseType<String> {
     if user.role != UserRole::Admin {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let code = uuid::Uuid::new_v4().to_string();
@@ -128,7 +128,7 @@ pub async fn create_invite(user: AuthenticatedUser) -> V1ApiResponseType<String>
     )
     .execute(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?;
+    .map_err(|_| V1ApiError::DatabaseError)?;
 
     Ok(V1ApiResponse(code))
 }
@@ -136,7 +136,7 @@ pub async fn create_invite(user: AuthenticatedUser) -> V1ApiResponseType<String>
 #[rocket::delete("/api/v1/invites/<code>")]
 pub async fn delete_invite(code: String, user: AuthenticatedUser) -> V1ApiResponseType<String> {
     if user.role != UserRole::Admin {
-        return Err(V1ApiError::NotAuthorized);
+        return Err(V1ApiError::MissingPermissions);
     }
 
     let deleted = sqlx::query!(
@@ -145,10 +145,10 @@ pub async fn delete_invite(code: String, user: AuthenticatedUser) -> V1ApiRespon
     )
     .execute(&*SQL)
     .await
-    .map_err(|_| V1ApiError::InternalError)?;
+    .map_err(|_| V1ApiError::DatabaseError)?;
 
     if deleted.rows_affected() == 0 {
-        return Err(V1ApiError::NotFound);
+        return Err(V1ApiError::InvalidInviteCode);
     }
 
     Ok(V1ApiResponse(code))
