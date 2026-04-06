@@ -12,6 +12,10 @@ impl<T> AutoOnceLock<T> {
         self.0.set(v)
     }
 
+    pub fn get(&self) -> Option<&T> {
+        self.0.get()
+    }
+
     pub fn get_or_init<F>(&self, f: F) -> &T
     where
         F: FnOnce() -> T,

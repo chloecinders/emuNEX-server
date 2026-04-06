@@ -3,14 +3,14 @@ name = "emunex-server"
 description = "Remote Emulation & Library Management - Server"
 repository = "https://github.com/chloecinders/emuNEX-server"
 authors = ["chloecinders"]
-version = "0.8.0"
+version = "0.8.1"
 edition = "2024"
 
 [dependencies]
 argon2 = "0.5.3"
 base64 = "0.22.1"
 chrono = { version = "0.4.44", features = ["serde"] }
-reqwest = { version = "0.13.2", features = ["json"] }
+reqwest = { version = "0.13.2", features = ["json", "form"] }
 rocket = { version = "0.5.1", features = ["json"] }
 rust-s3 = "0.37"
 rocket_dyn_templates = { version = "0.2.0", features = ["tera"] }
@@ -28,4 +28,5 @@ quick-xml = "0.39"
 md5 = "0.8"
 dashmap = "6"
 image = "0.25.10"
+urlencoding = "2.1.3"
 

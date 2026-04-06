@@ -137,7 +137,11 @@ pub async fn login(request_data: Json<V1AuthLoginRequest>) -> V1ApiResponseType<
     .map_err(|_| V1ApiError::DatabaseError)?
     .ok_or(V1ApiError::InvalidCredentials)?;
 
-    let parsed_hash = PasswordHash::new(&user.password).map_err(|_| V1ApiError::InternalError)?;
+    let password_str = user
+        .password
+        .as_deref()
+        .ok_or(V1ApiError::InvalidCredentials)?;
+    let parsed_hash = PasswordHash::new(password_str).map_err(|_| V1ApiError::InternalError)?;
 
     Argon2::default()
         .verify_password(data.password.as_bytes(), &parsed_hash)
@@ -167,27 +171,41 @@ pub struct V1AuthMeResponse {
     theme: String,
     avatar_path: Option<String>,
     profile_color: String,
+    discord_id: Option<String>,
+    has_password: bool,
 }
 
 impl V1ApiResponseTrait for V1AuthMeResponse {}
 
 #[get("/api/v1/users/@me")]
 pub async fn me(user: AuthenticatedUser) -> V1ApiResponseType<V1AuthMeResponse> {
-    let row = sqlx::query!(
-        "SELECT theme, avatar_path, profile_color FROM users WHERE id = $1",
-        user.id.0
+    let row = sqlx::query(
+        r#"SELECT u.theme, u.avatar_hash, u.profile_color, dc.discord_id, u.password IS NOT NULL as has_password
+         FROM users u
+         LEFT JOIN discord_connections dc ON u.id = dc.user_id
+         WHERE u.id = $1"#
     )
+    .bind(user.id.0)
     .fetch_one(&*SQL)
     .await
     .map_err(|_| V1ApiError::UserNotFound)?;
+
+    use sqlx::Row;
+    let theme: String = row.get("theme");
+    let avatar_hash: Option<String> = row.try_get("avatar_hash").unwrap_or(None);
+    let profile_color: String = row.get("profile_color");
+    let discord_id: Option<String> = row.try_get("discord_id").unwrap_or(None);
+    let has_password: bool = row.get("has_password");
 
     Ok(V1ApiResponse(V1AuthMeResponse {
         id: user.id,
         username: user.username,
         role: user.role,
-        theme: row.theme,
-        avatar_path: row.avatar_path,
-        profile_color: row.profile_color,
+        theme,
+        avatar_path: avatar_hash.map(|h| format!("/avatars/{}/{}.webp", user.id.0, h)),
+        profile_color,
+        discord_id,
+        has_password,
     }))
 }
 
@@ -288,7 +306,7 @@ pub async fn update_username(
 
 #[derive(Deserialize)]
 pub struct V1AuthUpdatePasswordRequest {
-    pub current_password: String,
+    pub current_password: Option<String>,
     pub new_password: String,
 }
 
@@ -304,12 +322,17 @@ pub async fn update_password(
         .await
         .map_err(|_| V1ApiError::UserNotFound)?;
 
-    let parsed_hash =
-        PasswordHash::new(&user_row.password).map_err(|_| V1ApiError::InternalError)?;
+    if let Some(password_str) = user_row.password.as_deref() {
+        let current = data
+            .current_password
+            .as_deref()
+            .ok_or(V1ApiError::InvalidCredentials)?;
+        let parsed_hash = PasswordHash::new(password_str).map_err(|_| V1ApiError::InternalError)?;
 
-    Argon2::default()
-        .verify_password(data.current_password.as_bytes(), &parsed_hash)
-        .map_err(|_| V1ApiError::InvalidCredentials)?;
+        Argon2::default()
+            .verify_password(current.as_bytes(), &parsed_hash)
+            .map_err(|_| V1ApiError::InvalidCredentials)?;
+    }
 
     let salt = SaltString::generate(&mut OsRng);
     let new_hash = Argon2::default()
@@ -360,9 +383,16 @@ pub async fn upload_avatar(
         return Err(V1ApiError::InvalidFile);
     }
 
-    let avatar_path = format!("/avatars/{}", user.id.value());
+    let img = image::load_from_memory(&bytes).map_err(|_| V1ApiError::InvalidFile)?;
+    let mut buf = std::io::Cursor::new(Vec::new());
+    img.write_to(&mut buf, image::ImageFormat::WebP)
+        .map_err(|_| V1ApiError::InternalError)?;
+    let webp_bytes = buf.into_inner();
 
-    crate::utils::s3::upload_object(&avatar_path, &bytes)
+    let hash = crate::utils::s3::compute_md5(&webp_bytes);
+    let avatar_path = format!("/avatars/{}/{}.webp", user.id.value(), hash);
+
+    crate::utils::s3::upload_object(&avatar_path, &webp_bytes)
         .await
         .map_err(|e| {
             error!(
@@ -373,21 +403,19 @@ pub async fn upload_avatar(
             V1ApiError::InternalError
         })?;
 
-    sqlx::query!(
-        "UPDATE users SET avatar_path = $1 WHERE id = $2",
-        avatar_path,
-        user.id.0
-    )
-    .execute(&*SQL)
-    .await
-    .map_err(|e| {
-        error!(
-            "Failed to save avatar_path for user {}: {:?}",
-            user.id.value(),
-            e
-        );
-        V1ApiError::InternalError
-    })?;
+    sqlx::query("UPDATE users SET avatar_hash = $1 WHERE id = $2")
+        .bind(hash)
+        .bind(user.id.0)
+        .execute(&*SQL)
+        .await
+        .map_err(|e| {
+            error!(
+                "Failed to save avatar_path for user {}: {:?}",
+                user.id.value(),
+                e
+            );
+            V1ApiError::InternalError
+        })?;
 
     Ok(V1ApiResponse(avatar_path))
 }

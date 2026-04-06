@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Signing in… | emuNEX</title>
+    </head>
+    <body>
+        <script>
+            (function () {
+                var token = "{{ token | safe }}";
+                var error = "{{ error | safe }}";
+
+                if (error && error.length > 0) {
+                    window.location.replace("/auth/login?error=" + encodeURIComponent(error));
+                    return;
+                }
+
+                if (token && token.length > 0) {
+                    document.cookie =
+                        "token=" +
+                        encodeURIComponent(token) +
+                        "; path=/; max-age=" +
+                        60 * 60 * 24 * 30 +
+                        "; SameSite=Lax";
+
+                    window.location.replace("/auth/login");
+                } else {
+                    window.location.replace(
+                        "/auth/login?error=" + encodeURIComponent("No session token was received. Please try again."),
+                    );
+                }
+            })();
+        </script>
+        <noscript>
+            <div style="font-family: sans-serif; text-align: center; padding: 2rem">
+                <h2>JavaScript Required</h2>
+                <p>JavaScript is required to complete sign-in. Please enable it and try again.</p>
+                <a href="/auth/login">Back to Login</a>
+            </div>
+        </noscript>
+    </body>
+</html>

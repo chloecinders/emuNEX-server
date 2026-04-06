@@ -34,9 +34,7 @@ pub async fn upload_save(
     for file in data.files.iter() {
         let buffer = general_purpose::STANDARD
             .decode(&file.content)
-            .map_err(|e| {
-                V1ApiError::InvalidFile
-            })?;
+            .map_err(|_e| V1ApiError::InvalidFile)?;
 
         let save_path = format!(
             "/saves/{}/{}/{}/{}",

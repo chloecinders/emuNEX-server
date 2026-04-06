@@ -3,6 +3,11 @@ database_url = "postgres://user:password@host:port/database"
 repository = "chloecinders/emunex-server"
 github_token = ""
 
+[discord]
+client_id = ""
+client_secret = ""
+bot_token = ""
+
 [s3]
 endpoint = "http://localhost:8333"
 bucket = "emunex"

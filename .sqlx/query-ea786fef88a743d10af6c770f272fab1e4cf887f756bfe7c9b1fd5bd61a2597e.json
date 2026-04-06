@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT u.id FROM users u\n         JOIN user_tokens ut ON u.id = ut.user_id\n         WHERE ut.token = $1 AND ut.expires_at > NOW()",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ea786fef88a743d10af6c770f272fab1e4cf887f756bfe7c9b1fd5bd61a2597e"
+}

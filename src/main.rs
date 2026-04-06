@@ -46,6 +46,34 @@ async fn rocket() -> _ {
         panic!("Could not run database migrations; err = {err}")
     }
 
+    if let Ok(legacy_users) = sqlx::query!("SELECT id, avatar_hash FROM users WHERE avatar_hash IS NOT NULL AND avatar_hash NOT LIKE '%.%'").fetch_all(&*SQL).await {
+        for user in legacy_users {
+            if let Some(old_path) = user.avatar_hash {
+                if let Ok(bytes) = crate::utils::s3::download_object(&old_path).await {
+                    if let Ok(img) = image::load_from_memory(&bytes) {
+                        let mut buf = std::io::Cursor::new(Vec::new());
+                        if img.write_to(&mut buf, image::ImageFormat::WebP).is_ok() {
+                            let webp_bytes = buf.into_inner();
+                            let hash = crate::utils::s3::compute_md5(&webp_bytes);
+                            let new_path = format!("/avatars/{}/{}.webp", user.id, hash);
+
+                            if crate::utils::s3::upload_object(&new_path, &webp_bytes).await.is_ok() {
+                                let _ = sqlx::query("UPDATE users SET avatar_hash = $1 WHERE id = $2")
+                                    .bind(hash)
+                                    .bind(user.id)
+                                    .execute(&*SQL).await;
+                                let _ = crate::utils::s3::delete_object(&old_path).await;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    crate::routes::api::v1::discord::start_token_refresh_task();
+    crate::routes::api::v1::discord::start_discord_widget_task();
+
     rocket::build()
         .attach(Template::fairing())
         .attach(RateLimitFairing::new())
@@ -58,6 +86,7 @@ async fn rocket() -> _ {
                 routes::dev::update_server,
                 routes::auth::auth_login,
                 routes::auth::auth_register,
+                routes::auth::auth_done,
                 routes::roms::rom_upload,
                 routes::roms::rom_bulk_upload,
                 routes::roms::rom_manage,
@@ -82,6 +111,9 @@ async fn rocket() -> _ {
                 routes::api::v1::auth::update_preferences,
                 routes::api::v1::auth::upload_avatar,
                 routes::api::v1::auth::update_profile_color,
+                routes::api::v1::discord::discord_callback,
+                routes::api::v1::discord::discord_authorize,
+                routes::api::v1::discord::sync_widget_endpoint,
                 routes::api::v1::roms::get_rom_list,
                 routes::api::v1::roms::get_rom_single,
                 routes::api::v1::roms::get_rom_versions,

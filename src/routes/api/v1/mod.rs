@@ -1,11 +1,12 @@
 pub mod auth;
 pub mod consoles;
+pub mod discord;
 pub mod emulators;
 pub mod guards;
 pub mod library;
 pub mod nointro;
-pub mod roms;
 pub mod reports;
+pub mod roms;
 pub mod saves;
-pub mod users;
 pub mod search_sections;
+pub mod users;

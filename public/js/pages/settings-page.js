@@ -49,6 +49,7 @@ class EmunexSettingsPage extends LitElement {
         _profileColor: { state: true },
         _avatarFile: { state: true },
         _avatarUploading: { state: true },
+        _discordSyncing: { state: true },
     };
 
     static styles = [
@@ -215,6 +216,7 @@ class EmunexSettingsPage extends LitElement {
         this._avatarPreview = null;
         this._avatarFile = null;
         this._avatarUploading = false;
+        this._discordSyncing = false;
     }
 
     async connectedCallback() {
@@ -299,12 +301,16 @@ class EmunexSettingsPage extends LitElement {
             const res = await fetch("/api/v1/users/@me/password", {
                 method: "PUT",
                 headers: { Authorization: token, "Content-Type": "application/json" },
-                body: JSON.stringify({ current_password: this._currentPassword, new_password: this._newPassword }),
+                body: JSON.stringify(body),
             });
             if (res.ok) {
                 this._currentPassword = "";
                 this._newPassword = "";
                 this._confirmPassword = "";
+                if (this._userData) {
+                    this._userData.has_password = true;
+                    this.requestUpdate();
+                }
                 this.showStatus("Password updated successfully", "success");
             } else {
                 const err = await res.json();
@@ -358,12 +364,34 @@ class EmunexSettingsPage extends LitElement {
         }
     }
 
+    async _syncDiscordWidget() {
+        if (this._discordSyncing) return;
+        this._discordSyncing = true;
+        try {
+            const token = await this._getToken();
+            const res = await fetch("/api/v1/users/@me/sync-discord-widget", {
+                method: "POST",
+                headers: { Authorization: token },
+            });
+            if (res.ok) {
+                this.showStatus("Discord profile synced!", "success");
+            } else {
+                const err = await res.json().catch(() => ({}));
+                this.showStatus(err.error || "Sync failed", "error");
+            }
+        } catch (e) {
+            this.showStatus("Network error", "error");
+        } finally {
+            this._discordSyncing = false;
+        }
+    }
+
     async _logout() {
         if (!confirm("Are you sure you want to log out?")) return;
         try {
             const token = await this._getToken();
             await fetch("/api/v1/logout", { method: "POST", headers: { Authorization: token } });
-        } catch (e) { }
+        } catch (e) {}
         await cookieStore.delete("token");
         window.location.href = "/";
     }
@@ -404,14 +432,14 @@ class EmunexSettingsPage extends LitElement {
                         >
                         <div class="color-grid">
                             ${presetColors.map(
-            (c) => html`
+                                (c) => html`
                                     <div
                                         class="color-swatch ${this._profileColor === c ? "active" : ""}"
                                         style="background: ${c}"
                                         @click=${() => this._updateProfileColor(c)}
                                     ></div>
                                 `,
-        )}
+                            )}
                             <div
                                 class="color-swatch custom-swatch ${isCustom ? "active" : ""}"
                                 style="background: ${isCustom ? this._profileColor : "var(--color-surface-variant)"}"
@@ -455,7 +483,7 @@ class EmunexSettingsPage extends LitElement {
                             />
                         </div>
                         ${this._avatarFile
-                ? html`
+                            ? html`
                                   <button
                                       class="popout-btn"
                                       style="width:100%; margin-bottom: var(--spacing-lg);"
@@ -467,7 +495,7 @@ class EmunexSettingsPage extends LitElement {
                                       </span>
                                   </button>
                               `
-                : ""}
+                            : ""}
 
                         <div class="section-hint">Identity</div>
                         <form @submit=${this._updateUsername}>
@@ -491,23 +519,27 @@ class EmunexSettingsPage extends LitElement {
                             @submit=${this._updatePassword}
                             style="display:flex; flex-direction:column; gap:var(--spacing-md);"
                         >
-                            <div class="form-group">
-                                <label>Current Password</label>
-                                <div class="pw-field">
-                                    <input
-                                        type=${this._showCurrentPw ? "text" : "password"}
-                                        .value=${this._currentPassword}
-                                        @input=${(e) => (this._currentPassword = e.target.value)}
-                                        required
-                                    />
-                                    <button
-                                        type="button"
-                                        class="pw-toggle"
-                                        @click=${() => (this._showCurrentPw = !this._showCurrentPw)}
-                                        ><i data-lucide="${this._showCurrentPw ? "eye-off" : "eye"}"></i
-                                    ></button>
-                                </div>
-                            </div>
+                            ${this._userData?.has_password !== false
+                                ? html`
+                                      <div class="form-group">
+                                          <label>Current Password</label>
+                                          <div class="pw-field">
+                                              <input
+                                                  type=${this._showCurrentPw ? "text" : "password"}
+                                                  .value=${this._currentPassword}
+                                                  @input=${(e) => (this._currentPassword = e.target.value)}
+                                                  required
+                                              />
+                                              <button
+                                                  type="button"
+                                                  class="pw-toggle"
+                                                  @click=${() => (this._showCurrentPw = !this._showCurrentPw)}
+                                                  ><i data-lucide="${this._showCurrentPw ? "eye-off" : "eye"}"></i
+                                              ></button>
+                                          </div>
+                                      </div>
+                                  `
+                                : ""}
                             <div class="form-group">
                                 <label>New Password</label>
                                 <div class="pw-field">
@@ -538,9 +570,64 @@ class EmunexSettingsPage extends LitElement {
                             </div>
                             <button type="submit" class="popout-btn" style="width: 100%;">
                                 <span class="btn-edge"></span>
-                                <span class="btn-front" style="padding: 10px;">Change Password</span>
+                                <span class="btn-front" style="padding: 10px;"
+                                    >${this._userData?.has_password === false
+                                        ? "Set Password"
+                                        : "Change Password"}</span
+                                >
                             </button>
                         </form>
+
+                        <div class="section-hint">Connections</div>
+                        <div
+                            style="font-size: 0.85rem; font-weight: 700; color: var(--color-text-muted); line-height:1.5; margin-bottom: var(--spacing-md);"
+                        >
+                            ${this._userData?.discord_id
+                                ? "Your account is linked to Discord."
+                                : "Link your Discord account to log in without a password."}
+                        </div>
+                        ${this._userData?.discord_id
+                            ? html`
+                                  <div
+                                      style="display: flex; align-items: center; justify-content: space-between; background: var(--color-surface-variant); padding: var(--spacing-md); border-radius: var(--radius-md); border: 1px solid var(--color-border); margin-bottom: var(--spacing-md);"
+                                  >
+                                      <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                                          <i data-lucide="gamepad-2" style="color: #5865F2;"></i>
+                                          <span style="font-weight: 800;">${this._userData.discord_id}</span>
+                                      </div>
+                                      <div
+                                          style="font-size: 0.75rem; color: var(--color-success, #2da44e); font-weight: 800; text-transform: uppercase;"
+                                          >Linked</div
+                                      >
+                                  </div>
+                                  <button
+                                      class="popout-btn"
+                                      style="--btn-color-primary: #5865F2; --btn-color-dark: #4752C4; width: 100%; margin-top: 0; margin-bottom: var(--spacing-md);"
+                                      ?disabled=${this._discordSyncing}
+                                      @click=${this._syncDiscordWidget}
+                                  >
+                                      <span class="btn-edge"></span>
+                                      <span class="btn-front btn-front-flex" style="padding: 10px; font-weight: 900;">
+                                          <i data-lucide="gamepad-2"></i>
+                                          ${this._discordSyncing ? "Syncing..." : "SYNC DISCORD PROFILE"}
+                                      </span>
+                                  </button>
+                              `
+                            : html`
+                                  <button
+                                      class="popout-btn"
+                                      style="--btn-color-primary: #5865F2; --btn-color-dark: #4752C4; width: 100%; margin-top: 0; margin-bottom: var(--spacing-md);"
+                                      @click=${() => {
+                                          window.location.href = "/auth/discord/authorize?action=link";
+                                      }}
+                                  >
+                                      <span class="btn-edge"></span>
+                                      <span class="btn-front btn-front-flex" style="padding: 10px; font-weight: 900;">
+                                          <i data-lucide="gamepad-2"></i>
+                                          LINK DISCORD ACCOUNT
+                                      </span>
+                                  </button>
+                              `}
 
                         <div class="section-hint">Connectivity</div>
                         <div
@@ -552,10 +639,10 @@ class EmunexSettingsPage extends LitElement {
                             class="popout-btn"
                             style="width: 100%; margin-top: 0;"
                             @click=${() => {
-                this._getToken().then((t) => {
-                    window.location.href = `emunex://login?token=\${t}&domain=\${encodeURIComponent(this.domain)}&storage_path=/storage`;
-                });
-            }}
+                                this._getToken().then((t) => {
+                                    window.location.href = `emunex://login?token=\${t}&domain=\${encodeURIComponent(this.domain)}&storage_path=/storage`;
+                                });
+                            }}
                         >
                             <span class="btn-edge"></span>
                             <span class="btn-front" style="padding: 10px; font-weight: 900;">LAUNCH CLIENT</span>

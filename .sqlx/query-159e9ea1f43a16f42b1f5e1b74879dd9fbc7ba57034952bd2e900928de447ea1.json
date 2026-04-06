@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, password FROM users WHERE username = $1",
+  "query": "SELECT id, avatar_hash FROM users WHERE avatar_hash IS NOT NULL AND avatar_hash NOT LIKE '%.%'",
   "describe": {
     "columns": [
       {
@@ -10,19 +10,17 @@
       },
       {
         "ordinal": 1,
-        "name": "password",
+        "name": "avatar_hash",
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Left": [
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
       true
     ]
   },
-  "hash": "771f2a72d0a796e25f90e1837fc601593a7071e8d790fcda5dcf004caa95fb45"
+  "hash": "159e9ea1f43a16f42b1f5e1b74879dd9fbc7ba57034952bd2e900928de447ea1"
 }

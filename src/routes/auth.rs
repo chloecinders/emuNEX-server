@@ -18,3 +18,15 @@ pub fn auth_register() -> Template {
         context! { auth_type: "register", domain: CONFIG.server_domain.clone() },
     )
 }
+
+#[get("/auth/done?<token>&<error>")]
+pub fn auth_done(token: Option<String>, error: Option<String>) -> Template {
+    Template::render(
+        "auth_done",
+        context! {
+            token: token.unwrap_or_default(),
+            error: error.unwrap_or_default(),
+            domain: CONFIG.server_domain.clone(),
+        },
+    )
+}

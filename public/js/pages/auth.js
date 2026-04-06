@@ -1,5 +1,5 @@
 import { LitElement, css, html } from "lit";
-import { CheckCircle, Download, ExternalLink, createIcons } from "lucide";
+import { CheckCircle, Download, ExternalLink, Gamepad2, createIcons } from "lucide";
 import "../components/navbar.js";
 import {
     authTokens,
@@ -137,31 +137,42 @@ class EmunexAuthPage extends LitElement {
 
     async connectedCallback() {
         super.connectedCallback();
+        const urlParams = new URLSearchParams(window.location.search);
+        const errorParam = urlParams.get("error");
+        if (errorParam) {
+            this._error = errorParam;
+        }
+
         const existingToken = (await cookieStore.get("token"))?.value;
         if (existingToken) {
-            this._successToken = existingToken;
-            this._fetchRole(existingToken);
-        }
-    }
-
-    async _fetchRole(token) {
-        try {
-            const res = await fetch("/api/v1/users/@me", {
-                headers: { Authorization: token },
-            });
-            if (res.ok) {
-                const json = await res.json();
-                this._role = json.data?.role || "";
+            try {
+                const res = await fetch("/api/v1/users/@me", {
+                    headers: { Authorization: existingToken },
+                });
+                if (res.ok) {
+                    const json = await res.json();
+                    this._role = json.data?.role || "";
+                    this._successToken = existingToken;
+                } else {
+                    await cookieStore.delete("token");
+                    this._successToken = "";
+                }
+            } catch (e) {
+                console.error("Failed to verify token:", e);
             }
-        } catch (e) {
-            console.error("Failed to fetch role:", e);
         }
     }
 
     updated(changedProperties) {
         if (changedProperties.has("_successToken") && this._successToken) {
             createIcons({
-                icons: { CheckCircle, Download, ExternalLink, Settings },
+                icons: { CheckCircle, Download, ExternalLink, Gamepad2 },
+                nameAttr: "data-lucide",
+                root: this.shadowRoot,
+            });
+        } else {
+            createIcons({
+                icons: { Gamepad2 },
                 nameAttr: "data-lucide",
                 root: this.shadowRoot,
             });
@@ -194,6 +205,41 @@ class EmunexAuthPage extends LitElement {
             <form @submit=${this._handleSubmit}>
                 <div class="section-hint">${isRegister ? "Create Account" : "Authenticate"}</div>
 
+                ${isRegister
+                    ? html`
+                          <div class="form-group" style="margin-bottom: var(--spacing-lg);">
+                              <label for="invite_code">Invite Code</label>
+                              <input id="invite_code" type="text" placeholder="Your invite code" required />
+                          </div>
+                      `
+                    : ""}
+
+                <div style="margin-bottom: var(--spacing-lg);">
+                    <button
+                        type="button"
+                        @click=${this._handleDiscord}
+                        class="popout-btn"
+                        style="--btn-color-primary: #5865F2; --btn-color-dark: #4752C4; width: 100%;"
+                    >
+                        <span class="btn-edge"></span>
+                        <span class="btn-front btn-front-flex">
+                            <i data-lucide="gamepad-2"></i>
+                            ${isRegister ? "Register with Discord" : "Log in with Discord"}
+                        </span>
+                    </button>
+
+                    <div
+                        style="display: flex; align-items: center; gap: var(--spacing-md); margin-top: var(--spacing-lg);"
+                    >
+                        <div style="flex: 1; height: 1px; background: var(--color-border);"></div>
+                        <div
+                            style="font-size: 0.7rem; font-weight: 900; color: var(--color-text-muted); text-transform: uppercase;"
+                            >or continue with username</div
+                        >
+                        <div style="flex: 1; height: 1px; background: var(--color-border);"></div>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label for="username">Username</label>
                     <input
@@ -221,10 +267,6 @@ class EmunexAuthPage extends LitElement {
                           <div class="form-group">
                               <label for="confirm">Confirm Password</label>
                               <input id="confirm" type="password" placeholder="••••••••" required />
-                          </div>
-                          <div class="form-group">
-                              <label for="invite_code">Invite Code</label>
-                              <input id="invite_code" type="text" placeholder="Your invite code" required />
                           </div>
                       `
                     : ""}
@@ -298,6 +340,19 @@ class EmunexAuthPage extends LitElement {
         `;
     }
 
+    _handleDiscord() {
+        let url = `/auth/discord/authorize?action=${this.authType}`;
+        if (this.authType === "register") {
+            const invite_code = this.renderRoot.querySelector("#invite_code")?.value;
+            if (!invite_code) {
+                this._error = "Please enter an invite code before registering with Discord";
+                return;
+            }
+            url += `&invite_code=${encodeURIComponent(invite_code)}`;
+        }
+        window.location.href = url;
+    }
+
     async _handleSubmit(e) {
         e.preventDefault();
         this._error = "";
@@ -340,7 +395,7 @@ class EmunexAuthPage extends LitElement {
             window.dispatchEvent(new CustomEvent("auth-changed"));
 
             this._successToken = token;
-            this._fetchRole(token);
+            this._role = json.data?.role || "";
             this._loading = false;
 
             setTimeout(() => {
