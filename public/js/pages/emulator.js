@@ -325,6 +325,7 @@ class EmunexEmulatorPage extends LitElement {
         formData.delete("consoles");
         this._selectedConsoles.forEach((c) => formData.append("consoles", c));
 
+        const isZipped = form.querySelector('#zipped').checked;
         formData.set("zipped", isZipped);
 
         try {
