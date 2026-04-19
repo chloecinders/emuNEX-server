@@ -26,7 +26,6 @@ class EmunexEmulatorsManagePage extends LitElement {
         _statusType: { type: String, state: true },
         _editModalOpen: { type: Boolean, state: true },
         _editingEmulator: { type: Object, state: true },
-        _editTags: { type: Array, state: true },
         _editConsoles: { type: Array, state: true },
         _editSaveExtensions: { type: Array, state: true },
         _editFileName: { type: String, state: true },
@@ -103,7 +102,6 @@ class EmunexEmulatorsManagePage extends LitElement {
         this._statusType = "";
         this._editModalOpen = false;
         this._editingEmulator = null;
-        this._editTags = [];
         this._editConsoles = [];
         this._editSaveExtensions = [];
         this._editFileName = "";
@@ -359,25 +357,23 @@ class EmunexEmulatorsManagePage extends LitElement {
                             </div>
 
                             <div class="form-group">
-                                <label>Configuration Files (press Enter to add)</label>
-                                <div class="tag-system">
-                                    ${this._editTags.map(
-            (t) =>
-                html`<div class="tag"
-                                                >${t}
-                                                <span class="tag-remove" @click=${() => this._removeTag(t)}
-                                                    >×</span
-                                                ></div
-                                            >`,
-        )}
-                                    <div class="tag-input-wrapper">
-                                        <input
-                                            type="text"
-                                            placeholder="config.ini"
-                                            @keydown=${this._handleTagKeydown}
-                                        />
-                                    </div>
-                                </div>
+                                <label>Input Config File</label>
+                                <input
+                                    type="text"
+                                    id="edit-input-config-file"
+                                    .value=${this._editingEmulator.input_config_file || ""}
+                                    placeholder="retroarch.cfg"
+                                />
+                            </div>
+
+                            <div class="form-group">
+                                <label>Input Mapper Identifier</label>
+                                <input
+                                    type="text"
+                                    id="edit-input-mapper"
+                                    .value=${this._editingEmulator.input_mapper || ""}
+                                    placeholder="retroarch"
+                                />
                             </div>
 
                             <div class="form-group">
@@ -455,19 +451,6 @@ class EmunexEmulatorsManagePage extends LitElement {
         `;
     }
 
-    _handleTagKeydown(e) {
-        if (e.key === "Enter" && e.target.value.trim()) {
-            e.preventDefault();
-            const val = e.target.value.trim();
-            if (!this._editTags.includes(val)) this._editTags = [...this._editTags, val];
-            e.target.value = "";
-        }
-    }
-
-    _removeTag(t) {
-        this._editTags = this._editTags.filter((tag) => tag !== t);
-    }
-
     _handleSaveExtKeydown(e) {
         if (e.key === "Enter" && e.target.value.trim()) {
             e.preventDefault();
@@ -520,7 +503,6 @@ class EmunexEmulatorsManagePage extends LitElement {
 
     openEdit(emu) {
         this._editingEmulator = { ...emu };
-        this._editTags = [...(emu.config_files || [])];
         this._editConsoles = [...(emu.consoles || [])];
         this._editSaveExtensions = [...(emu.save_extensions || [])];
         this._editFileName = "";
@@ -529,6 +511,9 @@ class EmunexEmulatorsManagePage extends LitElement {
         setTimeout(() => {
             const pPlatform = this.renderRoot.querySelector("#edit-platform");
             if (pPlatform) pPlatform.value = emu.platform;
+            
+            const pMapper = this.renderRoot.querySelector("#edit-input-mapper");
+            if (pMapper) pMapper.value = emu.input_mapper || "";
         }, 0);
     }
 
@@ -549,7 +534,8 @@ class EmunexEmulatorsManagePage extends LitElement {
             binary_name: root.querySelector("#edit-binary-name").value,
             save_path: root.querySelector("#edit-save-path").value,
             save_extensions: this._editSaveExtensions,
-            config_files: this._editTags,
+            input_config_file: root.querySelector("#edit-input-config-file").value,
+            input_mapper: root.querySelector("#edit-input-mapper").value || null,
             zipped: root.querySelector("#edit-zipped").checked,
         };
 

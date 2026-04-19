@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, r.rom_path, '/covers/' || r.console || '/' || r.id || '/' || r.image_hash || '.webp' as \"image_path!\", r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,\n             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as \"versions_count!\"\n           FROM roms r WHERE r.id = $1",
+  "query": "SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, '/covers_small/' || r.console || '/' || r.id || '/' || r.image_hash || '.webp' as \"image_path!\", r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,\n             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as \"versions_count!\"\n           FROM roms r WHERE r.id = ANY($1)",
   "describe": {
     "columns": [
       {
@@ -40,53 +40,48 @@
       },
       {
         "ordinal": 7,
-        "name": "rom_path",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 8,
         "name": "image_path!",
         "type_info": "Text"
       },
       {
-        "ordinal": 9,
+        "ordinal": 8,
         "name": "file_extension",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 10,
+        "ordinal": 9,
         "name": "file_size_bytes",
         "type_info": "Int8"
       },
       {
-        "ordinal": 11,
+        "ordinal": 10,
         "name": "md5_hash",
         "type_info": "Bpchar"
       },
       {
-        "ordinal": 12,
+        "ordinal": 11,
         "name": "release_year",
         "type_info": "Int4"
       },
       {
-        "ordinal": 13,
+        "ordinal": 12,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 14,
+        "ordinal": 13,
         "name": "languages",
         "type_info": "Text"
       },
       {
-        "ordinal": 15,
+        "ordinal": 14,
         "name": "versions_count!",
         "type_info": "Int8"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "TextArray"
       ]
     },
     "nullable": [
@@ -97,7 +92,6 @@
       true,
       false,
       true,
-      false,
       null,
       true,
       true,
@@ -108,5 +102,5 @@
       null
     ]
   },
-  "hash": "c7a446b63b1a19abfc1a54b804b9ec91333ed1b490ba45757535a6f1b5d409c2"
+  "hash": "159bb87334c833c89806e09fcea4c6fc0c0d147fe83b82d80f2e8769919c456b"
 }

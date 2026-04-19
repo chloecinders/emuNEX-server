@@ -20,7 +20,6 @@ class EmunexEmulatorPage extends LitElement {
         _loading: { type: Boolean, state: true },
         _consoles: { type: Array, state: true },
         _selectedConsoles: { type: Array, state: true },
-        _tags: { type: Array, state: true },
         _saveExtensions: { type: Array, state: true },
         _fileName: { type: String, state: true },
         _dragover: { type: Boolean, state: true },
@@ -61,7 +60,6 @@ class EmunexEmulatorPage extends LitElement {
         this._loading = false;
         this._consoles = [];
         this._selectedConsoles = [];
-        this._tags = [];
         this._saveExtensions = [];
         this._fileName = "";
         this._dragover = false;
@@ -152,25 +150,13 @@ class EmunexEmulatorPage extends LitElement {
                             </div>
 
                             <div class="form-group">
-                                <label>Config Files</label>
-                                <div class="tag-system">
-                                    ${this._tags.map(
-            (t) =>
-                html`<div class="tag"
-                                                >${t}
-                                                <span class="tag-remove" @click=${() => this._removeTag(t)}
-                                                    >×</span
-                                                ></div
-                                            >`,
-        )}
-                                    <div class="tag-input-wrapper">
-                                        <input
-                                            type="text"
-                                            placeholder="Type filename and press Enter"
-                                            @keydown=${this._handleTagKeydown}
-                                        />
-                                    </div>
-                                </div>
+                                <label for="input_config_file">Input Config File (e.g. retroarch.cfg)</label>
+                                <input type="text" id="input_config_file" name="input_config_file" placeholder="retroarch.cfg" />
+                            </div>
+
+                            <div class="form-group">
+                                <label for="input_mapper">Input Mapper Identifier</label>
+                                <input type="text" id="input_mapper" name="input_mapper" placeholder="retroarch" />
                             </div>
 
                             <div class="form-group">
@@ -248,19 +234,6 @@ class EmunexEmulatorPage extends LitElement {
         `;
     }
 
-    _handleTagKeydown(e) {
-        if (e.key === "Enter" && e.target.value.trim()) {
-            e.preventDefault();
-            const val = e.target.value.trim();
-            if (!this._tags.includes(val)) this._tags = [...this._tags, val];
-            e.target.value = "";
-        }
-    }
-
-    _removeTag(t) {
-        this._tags = this._tags.filter((tag) => tag !== t);
-    }
-
     _handleSaveExtKeydown(e) {
         if (e.key === "Enter" && e.target.value.trim()) {
             e.preventDefault();
@@ -316,9 +289,6 @@ class EmunexEmulatorPage extends LitElement {
         const form = this.renderRoot.querySelector("#emulatorForm");
         const formData = new FormData(form);
 
-        formData.delete("config_files");
-        this._tags.forEach((file) => formData.append("config_files", file));
-
         formData.delete("save_extensions");
         this._saveExtensions.forEach((ext) => formData.append("save_extensions", ext));
 
@@ -337,11 +307,11 @@ class EmunexEmulatorPage extends LitElement {
             });
 
             const result = await response.json();
+
             if (response.ok) {
                 this._status = `Success! Emulator ID: ${result.data}`;
                 this._statusType = "success";
                 form.reset();
-                this._tags = [];
                 this._saveExtensions = [];
                 this._selectedConsoles = [];
                 this._fileName = "";

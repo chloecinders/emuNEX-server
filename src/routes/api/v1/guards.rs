@@ -41,7 +41,7 @@ impl<'r> rocket::request::FromRequest<'r> for AuthToken {
             Some(t) => rocket::request::Outcome::Success(AuthToken(t)),
             None => rocket::request::Outcome::Error((
                 rocket::http::Status::Unauthorized,
-                V1ApiError::NotAuthorized,
+                V1ApiError::InvalidToken,
             )),
         }
     }
@@ -87,13 +87,13 @@ impl<'r> rocket::request::FromRequest<'r> for AuthenticatedUser {
                     }),
                     _ => rocket::request::Outcome::Error((
                         rocket::http::Status::Unauthorized,
-                        V1ApiError::NotAuthorized,
+                        V1ApiError::InvalidToken,
                     )),
                 }
             }
             None => rocket::request::Outcome::Error((
                 rocket::http::Status::Unauthorized,
-                V1ApiError::NotAuthorized,
+                V1ApiError::InvalidToken,
             )),
         }
     }

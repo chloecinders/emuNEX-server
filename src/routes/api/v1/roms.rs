@@ -210,7 +210,7 @@ pub async fn get_search_overview(
                 error!("Failed to fetch custom section {}, {:?}", s.id, e);
                 V1ApiError::InternalError
             })?;
-            
+
             if !custom_roms.is_empty() {
                 overview.push(V1SearchOverviewGroup {
                     title: s.title,
@@ -232,7 +232,6 @@ pub struct V1RomFullResponse {
     pub region: Option<String>,
     pub category: String,
     pub serial: Option<String>,
-    pub rom_path: String,
     pub image_path: String,
     pub file_extension: Option<String>,
     pub file_size_bytes: Option<i64>,
@@ -243,6 +242,7 @@ pub struct V1RomFullResponse {
     pub versions_count: i64,
 }
 impl V1ApiResponseTrait for V1RomFullResponse {}
+impl V1ApiResponseTrait for Vec<V1RomFullResponse> {}
 
 #[get("/api/v1/roms/<id>")]
 pub async fn get_rom_single(
@@ -251,7 +251,7 @@ pub async fn get_rom_single(
 ) -> V1ApiResponseType<V1RomFullResponse> {
     let rom = sqlx::query_as!(
         V1RomFullResponse,
-        r#"SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, r.rom_path, '/covers/' || r.console || '/' || r.id || '/' || r.image_hash || '.webp' as "image_path!", r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,
+        r#"SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, '/covers/' || r.console || '/' || r.id || '/' || r.image_hash || '.webp' as "image_path!", r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,
              (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!"
            FROM roms r WHERE r.id = $1"#, 
         id
@@ -422,7 +422,7 @@ pub async fn upload_rom(
     })?;
 
     let rom_id = crate::utils::snowflake::next_id();
-    
+
     let img_webp_bytes = buf.into_inner();
     let img_hash = compute_md5(&img_webp_bytes);
     let img_path = format!("/covers/{}/{}/{}.webp", data.console, rom_id, img_hash);
@@ -433,8 +433,6 @@ pub async fn upload_rom(
             error!("Failed to upload image to '{}': {:?}", img_path, e);
             V1ApiError::InternalError
         })?;
-
-
 
     sqlx::query!(
         "INSERT INTO roms (id, title, realname, console, category, region, serial, release_year, rom_path, image_hash, file_extension, md5_hash, file_size_bytes, languages)
@@ -668,9 +666,21 @@ pub async fn update_rom_image(
             V1ApiError::InternalError
         })?;
 
-    let _ = crate::utils::s3::delete_object(&format!("/covers/{}/{}/{}.webp", _rom.console, id, _rom.image_hash)).await;
-    let _ = crate::utils::s3::delete_object(&format!("/covers_small/{}/{}/{}.webp", _rom.console, id, _rom.image_hash)).await;
-    let _ = crate::utils::s3::delete_object(&format!("/icons/{}/{}/{}.webp", _rom.console, id, _rom.image_hash)).await;
+    let _ = crate::utils::s3::delete_object(&format!(
+        "/covers/{}/{}/{}.webp",
+        _rom.console, id, _rom.image_hash
+    ))
+    .await;
+    let _ = crate::utils::s3::delete_object(&format!(
+        "/covers_small/{}/{}/{}.webp",
+        _rom.console, id, _rom.image_hash
+    ))
+    .await;
+    let _ = crate::utils::s3::delete_object(&format!(
+        "/icons/{}/{}/{}.webp",
+        _rom.console, id, _rom.image_hash
+    ))
+    .await;
 
     sqlx::query!(
         "UPDATE roms SET image_hash = $1 WHERE id = $2",
@@ -693,19 +703,34 @@ pub async fn delete_rom(id: String, user: AuthenticatedUser) -> V1ApiResponseTyp
         return Err(V1ApiError::MissingPermissions);
     }
 
-    let rom = sqlx::query!("SELECT rom_path, image_hash, console FROM roms WHERE id = $1", id)
-        .fetch_optional(&*SQL)
-        .await
-        .map_err(|e| {
-            error!("Failed to fetch rom for deletion: {:?}", e);
-            V1ApiError::InternalError
-        })?
-        .ok_or(V1ApiError::RomNotFound)?;
+    let rom = sqlx::query!(
+        "SELECT rom_path, image_hash, console FROM roms WHERE id = $1",
+        id
+    )
+    .fetch_optional(&*SQL)
+    .await
+    .map_err(|e| {
+        error!("Failed to fetch rom for deletion: {:?}", e);
+        V1ApiError::InternalError
+    })?
+    .ok_or(V1ApiError::RomNotFound)?;
 
     let _ = crate::utils::s3::delete_object(&rom.rom_path).await;
-    let _ = crate::utils::s3::delete_object(&format!("/covers/{}/{}/{}.webp", rom.console, id, rom.image_hash)).await;
-    let _ = crate::utils::s3::delete_object(&format!("/covers_small/{}/{}/{}.webp", rom.console, id, rom.image_hash)).await;
-    let _ = crate::utils::s3::delete_object(&format!("/icons/{}/{}/{}.webp", rom.console, id, rom.image_hash)).await;
+    let _ = crate::utils::s3::delete_object(&format!(
+        "/covers/{}/{}/{}.webp",
+        rom.console, id, rom.image_hash
+    ))
+    .await;
+    let _ = crate::utils::s3::delete_object(&format!(
+        "/covers_small/{}/{}/{}.webp",
+        rom.console, id, rom.image_hash
+    ))
+    .await;
+    let _ = crate::utils::s3::delete_object(&format!(
+        "/icons/{}/{}/{}.webp",
+        rom.console, id, rom.image_hash
+    ))
+    .await;
 
     sqlx::query!("DELETE FROM roms WHERE id = $1", id)
         .execute(&*SQL)
@@ -812,7 +837,10 @@ pub async fn get_user_library(
             rom_id: r.rom_id.clone(),
             title: r.title,
             realname: r.realname,
-            image_path: format!("/covers_small/{}/{}/{}.webp", r.console, r.rom_id, r.image_hash),
+            image_path: format!(
+                "/covers_small/{}/{}/{}.webp",
+                r.console, r.rom_id, r.image_hash
+            ),
             console: r.console,
             play_count: r.play_count,
             last_played: r.last_played,
@@ -1006,4 +1034,120 @@ pub async fn bulk_upload_roms(
         "Processed {} successfully, {} failed.",
         success_count, fail_count
     )))
+}
+
+#[post("/api/v1/roms/<id>/download")]
+pub async fn register_downloaded(id: String, user: AuthenticatedUser) -> V1ApiResponseType<String> {
+    let rom = sqlx::query!("SELECT rom_path FROM roms WHERE id = $1", id)
+        .fetch_optional(&*SQL)
+        .await
+        .map_err(|e| {
+            error!("Failed to fetch rom path for id {}: {:?}", id, e);
+            V1ApiError::InternalError
+        })?
+        .ok_or(V1ApiError::RomNotFound)?;
+
+    let user_rom_id = crate::utils::snowflake::next_id();
+
+    sqlx::query!(
+        "INSERT INTO user_roms (id, user_id, rom_id, play_count, last_played, is_favorite)
+         VALUES ($1, $2, $3, 0, NULL, FALSE)
+         ON CONFLICT (user_id, rom_id) DO NOTHING",
+        user_rom_id,
+        user.id.value(),
+        id
+    )
+    .execute(&*SQL)
+    .await
+    .map_err(|e| {
+        error!("Failed to register download for id {}: {:?}", id, e);
+        V1ApiError::InternalError
+    })?;
+
+    Ok(V1ApiResponse(rom.rom_path))
+}
+
+#[derive(serde::Deserialize)]
+pub struct V1MigrateRequest {
+    pub ids: Vec<String>,
+}
+
+#[post("/api/v1/user_roms/migrate", format = "json", data = "<data>")]
+pub async fn migrate_user_roms(
+    data: Json<V1MigrateRequest>,
+    user: AuthenticatedUser,
+) -> V1ApiResponseType<()> {
+    let mut tx = SQL.begin().await.map_err(|_| V1ApiError::InternalError)?;
+
+    let is_migrated = sqlx::query!(
+        "SELECT has_migrated FROM users WHERE id = $1",
+        user.id.value()
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|_| V1ApiError::InternalError)?
+    .has_migrated;
+
+    if is_migrated {
+        return Err(V1ApiError::BadRequest);
+    }
+
+    let mut ids = data.ids.clone();
+    ids.truncate(50);
+
+    for id in ids {
+        let user_rom_id = crate::utils::snowflake::next_id();
+        let _ = sqlx::query!(
+            "INSERT INTO user_roms (id, user_id, rom_id, play_count, last_played, is_favorite)
+             VALUES ($1, $2, $3, 0, NULL, FALSE)
+             ON CONFLICT (user_id, rom_id) DO NOTHING",
+            user_rom_id,
+            user.id.value(),
+            id
+        )
+        .execute(&mut *tx)
+        .await;
+    }
+
+    sqlx::query!(
+        "UPDATE users SET has_migrated = TRUE WHERE id = $1",
+        user.id.value()
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(|_| V1ApiError::InternalError)?;
+
+    tx.commit().await.map_err(|_| V1ApiError::InternalError)?;
+
+    Ok(V1ApiResponse(()))
+}
+
+#[derive(serde::Deserialize)]
+pub struct V1BulkInfoRequest {
+    pub ids: Vec<String>,
+}
+
+#[post("/api/v1/roms/bulk_info", format = "json", data = "<data>")]
+pub async fn get_bulk_rom_info(
+    data: Json<V1BulkInfoRequest>,
+    _user: AuthenticatedUser,
+) -> V1ApiResponseType<Vec<V1RomFullResponse>> {
+    let mut ids = data.ids.clone();
+    ids.truncate(50);
+
+    let roms = sqlx::query_as!(
+        V1RomFullResponse,
+        r#"SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, '/covers_small/' || r.console || '/' || r.id || '/' || r.image_hash || '.webp' as "image_path!", r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,
+             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!"
+           FROM roms r WHERE r.id = ANY($1)"#,
+        &ids
+    )
+    .fetch_all(&*SQL)
+    .await
+    .map_err(|e| {
+        error!("Failed to fetch bulk roms: {:?}", e);
+        V1ApiError::InternalError
+    })?;
+
+    Ok(V1ApiResponse(roms))
 }

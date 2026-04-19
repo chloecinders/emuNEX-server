@@ -11,6 +11,7 @@ use serde::Serialize;
 #[serde(rename_all = "PascalCase")]
 pub enum V1ApiError {
     NotAuthorized,
+    InvalidToken,
     NotFound,
     InternalError,
     Conflict,
@@ -43,8 +44,12 @@ impl V1ApiError {
     fn response(&self) -> (Status, &'static str) {
         match self {
             V1ApiError::NotAuthorized => (
-                Status::Unauthorized,
+                Status::Forbidden,
                 "You are not authorized to use this endpoint",
+            ),
+            V1ApiError::InvalidToken => (
+                Status::Unauthorized,
+                "Your session has expired or your token is invalid. Please log in again.",
             ),
             V1ApiError::NotFound => (Status::NotFound, "The requested resource was not found"),
             V1ApiError::InternalError => {

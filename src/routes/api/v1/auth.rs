@@ -173,6 +173,7 @@ pub struct V1AuthMeResponse {
     profile_color: String,
     discord_id: Option<String>,
     has_password: bool,
+    has_migrated: bool,
 }
 
 impl V1ApiResponseTrait for V1AuthMeResponse {}
@@ -180,7 +181,7 @@ impl V1ApiResponseTrait for V1AuthMeResponse {}
 #[get("/api/v1/users/@me")]
 pub async fn me(user: AuthenticatedUser) -> V1ApiResponseType<V1AuthMeResponse> {
     let row = sqlx::query(
-        r#"SELECT u.theme, u.avatar_hash, u.profile_color, dc.discord_id, u.password IS NOT NULL as has_password
+        r#"SELECT u.theme, u.avatar_hash, u.profile_color, dc.discord_id, u.password IS NOT NULL as has_password, u.has_migrated
          FROM users u
          LEFT JOIN discord_connections dc ON u.id = dc.user_id
          WHERE u.id = $1"#
@@ -196,6 +197,7 @@ pub async fn me(user: AuthenticatedUser) -> V1ApiResponseType<V1AuthMeResponse> 
     let profile_color: String = row.get("profile_color");
     let discord_id: Option<String> = row.try_get("discord_id").unwrap_or(None);
     let has_password: bool = row.get("has_password");
+    let has_migrated: bool = row.get("has_migrated");
 
     Ok(V1ApiResponse(V1AuthMeResponse {
         id: user.id,
@@ -206,6 +208,7 @@ pub async fn me(user: AuthenticatedUser) -> V1ApiResponseType<V1AuthMeResponse> 
         profile_color,
         discord_id,
         has_password,
+        has_migrated,
     }))
 }
 

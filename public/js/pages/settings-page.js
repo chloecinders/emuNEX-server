@@ -640,7 +640,7 @@ class EmunexSettingsPage extends LitElement {
                             style="width: 100%; margin-top: 0;"
                             @click=${() => {
                                 this._getToken().then((t) => {
-                                    window.location.href = `emunex://login?token=\${t}&domain=\${encodeURIComponent(this.domain)}&storage_path=/storage`;
+                                    window.location.href = `emunex://login?token=${t}&domain=${encodeURIComponent(this.domain)}&storage_path=/storage`;
                                 });
                             }}
                         >

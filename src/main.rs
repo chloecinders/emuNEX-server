@@ -1,4 +1,5 @@
-use rocket::{fs::FileServer, launch, routes};
+use rocket::serde::json::Json;
+use rocket::{catch, catchers, fs::FileServer, launch, routes};
 use rocket_dyn_templates::Template;
 use s3::Bucket;
 use sqlx::{PgPool, postgres::PgPoolOptions};
@@ -74,6 +75,48 @@ async fn rocket() -> _ {
     crate::routes::api::v1::discord::start_token_refresh_task();
     crate::routes::api::v1::discord::start_discord_widget_task();
 
+    #[catch(400)]
+    fn bad_request() -> Json<serde_json::Value> {
+        Json(
+            serde_json::json!({ "code": "BadRequest", "message": "Bad request", "success": false }),
+        )
+    }
+
+    #[catch(401)]
+    fn unauthorized() -> Json<serde_json::Value> {
+        Json(
+            serde_json::json!({ "code": "InvalidToken", "message": "Your session has expired or your token is invalid. Please log in again.", "success": false }),
+        )
+    }
+
+    #[catch(403)]
+    fn forbidden() -> Json<serde_json::Value> {
+        Json(
+            serde_json::json!({ "code": "MissingPermissions", "message": "You do not have permission to perform this action", "success": false }),
+        )
+    }
+
+    #[catch(404)]
+    fn not_found() -> Json<serde_json::Value> {
+        Json(
+            serde_json::json!({ "code": "NotFound", "message": "The requested resource was not found", "success": false }),
+        )
+    }
+
+    #[catch(422)]
+    fn unprocessable() -> Json<serde_json::Value> {
+        Json(
+            serde_json::json!({ "code": "BadRequest", "message": "The request was malformed or contained invalid data", "success": false }),
+        )
+    }
+
+    #[catch(500)]
+    fn internal_error() -> Json<serde_json::Value> {
+        Json(
+            serde_json::json!({ "code": "InternalError", "message": "An unexpected error occurred", "success": false }),
+        )
+    }
+
     rocket::build()
         .attach(Template::fairing())
         .attach(RateLimitFairing::new())
@@ -126,6 +169,9 @@ async fn rocket() -> _ {
                 routes::api::v1::roms::delete_rom,
                 routes::api::v1::roms::get_categories,
                 routes::api::v1::roms::start_game,
+                routes::api::v1::roms::register_downloaded,
+                routes::api::v1::roms::migrate_user_roms,
+                routes::api::v1::roms::get_bulk_rom_info,
                 routes::api::v1::roms::get_user_library,
                 routes::api::v1::roms::get_search_overview,
                 routes::api::v1::library::get_shelves,
@@ -171,6 +217,17 @@ async fn rocket() -> _ {
                 routes::api::v1::reports::delete_report,
                 routes::proxy::storage,
                 routes::proxy::storage_options,
+            ],
+        )
+        .register(
+            "/",
+            catchers![
+                bad_request,
+                unauthorized,
+                forbidden,
+                not_found,
+                unprocessable,
+                internal_error
             ],
         )
 }
