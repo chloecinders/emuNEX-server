@@ -3,7 +3,7 @@ name = "emunex-server"
 description = "Remote Emulation & Library Management - Server"
 repository = "https://github.com/chloecinders/emuNEX-server"
 authors = ["chloecinders"]
-version = "0.8.2"
+version = "0.8.3"
 edition = "2024"
 
 [dependencies]

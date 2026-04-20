@@ -210,22 +210,22 @@ class EmunexEmulatorsManagePage extends LitElement {
                                 </thead>
                                 <tbody>
                                     ${this._loading
-                ? html`<tr><td colspan="5" style="text-align: center">Loading...</td></tr>`
-                : ""}
+                                        ? html`<tr><td colspan="5" style="text-align: center">Loading...</td></tr>`
+                                        : ""}
                                     ${this._error
-                ? html`<tr
+                                        ? html`<tr
                                               ><td colspan="5" style="text-align: center; color: var(--color-error)"
                                                   >${this._error}</td
                                               ></tr
                                           >`
-                : ""}
+                                        : ""}
                                     ${!this._loading && !this._error && this._filtered.length === 0
-                ? html`<tr
+                                        ? html`<tr
                                               ><td colspan="5" style="text-align: center">No emulators found.</td></tr
                                           >`
-                : ""}
+                                        : ""}
                                     ${this._filtered.map(
-                    (emu) => html`
+                                        (emu) => html`
                                             <tr>
                                                 <td
                                                     style="font-family: monospace; font-weight: 700; color: var(--color-text-muted);"
@@ -257,21 +257,21 @@ class EmunexEmulatorsManagePage extends LitElement {
                                                 </td>
                                             </tr>
                                         `,
-                )}
+                                    )}
                                 </tbody>
                             </table>
                         </div>
 
                         ${this._status
-                ? html`
+                            ? html`
                                   <div
                                       class="status-box ${this._statusType === "error"
-                        ? "status-error"
-                        : "status-success"}"
+                                          ? "status-error"
+                                          : "status-success"}"
                                       >${this._status}</div
                                   >
                               `
-                : ""}
+                            : ""}
                     </div>
                 </div>
             </div>
@@ -292,6 +292,16 @@ class EmunexEmulatorsManagePage extends LitElement {
                                 <input type="text" id="edit-name" .value=${this._editingEmulator.name} required />
                             </div>
 
+                            <div class="form-group">
+                                <label>Version</label>
+                                <input
+                                    type="text"
+                                    id="edit-version"
+                                    .value=${this._editingEmulator.version || ""}
+                                    placeholder="1.0.0"
+                                />
+                            </div>
+
                             <div class="grid-2">
                                 <div class="form-group">
                                     <label>Consoles (select at least one)</label>
@@ -300,7 +310,7 @@ class EmunexEmulatorsManagePage extends LitElement {
                                         style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 4px;"
                                     >
                                         ${this._consoles.map(
-            (c) => html`
+                                            (c) => html`
                                                 <label
                                                     class="checkbox-row"
                                                     style="margin: 0; align-items: center; gap: 4px;"
@@ -313,7 +323,7 @@ class EmunexEmulatorsManagePage extends LitElement {
                                                     ${c.name.toUpperCase()}
                                                 </label>
                                             `,
-        )}
+                                        )}
                                     </div>
                                 </div>
                                 <div class="form-group">
@@ -383,14 +393,14 @@ class EmunexEmulatorsManagePage extends LitElement {
                                 >
                                 <div class="tag-system">
                                     ${this._editSaveExtensions.map(
-            (t) =>
-                html`<div class="tag"
+                                        (t) =>
+                                            html`<div class="tag"
                                                 >${t}
                                                 <span class="tag-remove" @click=${() => this._removeSaveExt(t)}
                                                     >×</span
                                                 ></div
                                             >`,
-        )}
+                                    )}
                                     <div class="tag-input-wrapper">
                                         <input
                                             type="text"
@@ -511,7 +521,7 @@ class EmunexEmulatorsManagePage extends LitElement {
         setTimeout(() => {
             const pPlatform = this.renderRoot.querySelector("#edit-platform");
             if (pPlatform) pPlatform.value = emu.platform;
-            
+
             const pMapper = this.renderRoot.querySelector("#edit-input-mapper");
             if (pMapper) pMapper.value = emu.input_mapper || "";
         }, 0);
@@ -537,6 +547,7 @@ class EmunexEmulatorsManagePage extends LitElement {
             input_config_file: root.querySelector("#edit-input-config-file").value,
             input_mapper: root.querySelector("#edit-input-mapper").value || null,
             zipped: root.querySelector("#edit-zipped").checked,
+            version: root.querySelector("#edit-version").value || null,
         };
 
         try {

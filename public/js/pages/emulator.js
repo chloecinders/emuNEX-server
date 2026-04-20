@@ -101,13 +101,17 @@ class EmunexEmulatorPage extends LitElement {
                                     <input type="text" id="name" name="name" placeholder="VBA-M" required />
                                 </div>
                                 <div class="form-group">
+                                    <label for="version">Version</label>
+                                    <input type="text" id="version" name="version" placeholder="1.0.0" />
+                                </div>
+                                <div class="form-group">
                                     <label>Consoles (select at least one)</label>
                                     <div
                                         class="checkbox-grid"
                                         style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 4px;"
                                     >
                                         ${this._consoles.map(
-            (c) => html`
+                                            (c) => html`
                                                 <label
                                                     class="checkbox-row"
                                                     style="margin: 0; align-items: center; gap: 4px;"
@@ -120,7 +124,7 @@ class EmunexEmulatorPage extends LitElement {
                                                     ${c.name.toUpperCase()}
                                                 </label>
                                             `,
-        )}
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -151,7 +155,12 @@ class EmunexEmulatorPage extends LitElement {
 
                             <div class="form-group">
                                 <label for="input_config_file">Input Config File (e.g. retroarch.cfg)</label>
-                                <input type="text" id="input_config_file" name="input_config_file" placeholder="retroarch.cfg" />
+                                <input
+                                    type="text"
+                                    id="input_config_file"
+                                    name="input_config_file"
+                                    placeholder="retroarch.cfg"
+                                />
                             </div>
 
                             <div class="form-group">
@@ -166,14 +175,14 @@ class EmunexEmulatorPage extends LitElement {
                                 >
                                 <div class="tag-system">
                                     ${this._saveExtensions.map(
-            (t) =>
-                html`<div class="tag"
+                                        (t) =>
+                                            html`<div class="tag"
                                                 >${t}
                                                 <span class="tag-remove" @click=${() => this._removeSaveExt(t)}
                                                     >×</span
                                                 ></div
                                             >`,
-        )}
+                                    )}
                                     <div class="tag-input-wrapper">
                                         <input type="text" placeholder=".sra" @keydown=${this._handleSaveExtKeydown} />
                                     </div>
@@ -219,15 +228,15 @@ class EmunexEmulatorPage extends LitElement {
                         </form>
 
                         ${this._status
-                ? html`
+                            ? html`
                                   <div
                                       class="status-box ${this._statusType === "error"
-                        ? "status-error"
-                        : "status-success"}"
+                                          ? "status-error"
+                                          : "status-success"}"
                                       >${this._status}</div
                                   >
                               `
-                : ""}
+                            : ""}
                     </div>
                 </div>
             </div>
@@ -295,7 +304,7 @@ class EmunexEmulatorPage extends LitElement {
         formData.delete("consoles");
         this._selectedConsoles.forEach((c) => formData.append("consoles", c));
 
-        const isZipped = form.querySelector('#zipped').checked;
+        const isZipped = form.querySelector("#zipped").checked;
         formData.set("zipped", isZipped);
 
         try {

@@ -1,0 +1,1 @@
+ALTER TABLE emulators ADD COLUMN version VARCHAR DEFAULT '0';

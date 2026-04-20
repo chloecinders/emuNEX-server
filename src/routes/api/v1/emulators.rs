@@ -38,6 +38,7 @@ pub struct V1EmulatorResponse {
     pub input_mapper: Option<String>,
     pub zipped: bool,
     pub file_size: i64,
+    pub version: Option<String>,
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
@@ -67,6 +68,7 @@ pub async fn get_emulators_for_platform(
             input_mapper,
             zipped as "zipped!",
             file_size as "file_size!",
+            version,
             created_at
         FROM emulators
         WHERE $1 ILIKE ANY(consoles) AND platform = $2
@@ -110,6 +112,7 @@ pub async fn get_all_emulators(
             input_mapper,
             zipped as "zipped!",
             file_size as "file_size!",
+            version,
             created_at
         FROM emulators
         ORDER BY consoles ASC, name ASC
@@ -138,6 +141,7 @@ pub struct V1EmulatorUploadRequest<'r> {
     pub input_config_file: Option<String>,
     pub input_mapper: Option<String>,
     pub zipped: bool,
+    pub version: Option<String>,
 }
 
 #[post(
@@ -198,8 +202,8 @@ pub async fn emulator_upload(
     let id = next_id();
 
     sqlx::query!(
-        "INSERT INTO emulators (id, name, consoles, platform, run_command, binary_name, save_path, save_extensions, binary_path, md5_hash, input_config_file, input_mapper, zipped, file_size)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
+        "INSERT INTO emulators (id, name, consoles, platform, run_command, binary_name, save_path, save_extensions, binary_path, md5_hash, input_config_file, input_mapper, zipped, file_size, version)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)",
         id,
         data.name,
         &data.consoles,
@@ -213,7 +217,8 @@ pub async fn emulator_upload(
         data.input_config_file,
         data.input_mapper,
         data.zipped,
-        file_size
+        file_size,
+        data.version
     )
     .execute(&*SQL)
     .await
@@ -237,6 +242,7 @@ pub struct V1EmulatorUpdateRequest {
     pub input_config_file: Option<String>,
     pub input_mapper: Option<String>,
     pub zipped: bool,
+    pub version: Option<String>,
 }
 
 #[put("/api/v1/emulators/<id>", format = "json", data = "<data>")]
@@ -250,7 +256,7 @@ pub async fn update_emulator(
     }
 
     sqlx::query!(
-        "UPDATE emulators SET name = $1, consoles = $2, platform = $3, run_command = $4, binary_name = $5, save_path = $6, save_extensions = $7, input_config_file = $8, input_mapper = $9, zipped = $10 WHERE id = $11",
+        "UPDATE emulators SET name = $1, consoles = $2, platform = $3, run_command = $4, binary_name = $5, save_path = $6, save_extensions = $7, input_config_file = $8, input_mapper = $9, zipped = $10, version = $11 WHERE id = $12",
         data.name,
         &data.consoles,
         data.platform,
@@ -261,6 +267,7 @@ pub async fn update_emulator(
         data.input_config_file,
         data.input_mapper,
         data.zipped,
+        data.version,
         id
     )
     .execute(&*SQL)
