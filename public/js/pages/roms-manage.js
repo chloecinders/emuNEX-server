@@ -122,7 +122,7 @@ class EmunexRomsManagePage extends LitElement {
         this._loading = true;
         try {
             const token = (await cookieStore.get("token"))?.value;
-            const res = await fetch("/api/v1/roms/list", { headers: { Authorization: token } });
+            const res = await fetch("/api/v1/roms/list?admin=true", { headers: { Authorization: token } });
             const json = await res.json();
             if (res.ok) {
                 this._roms = json.data || [];
@@ -158,6 +158,7 @@ class EmunexRomsManagePage extends LitElement {
         try {
             const url = new URL("/api/v1/roms/search", window.location.origin);
             if (query) url.searchParams.set("query", query);
+            url.searchParams.set("admin", "true");
 
             const token = (await cookieStore.get("token"))?.value;
             const res = await fetch(url, {
@@ -198,21 +199,20 @@ class EmunexRomsManagePage extends LitElement {
                                     <span class="btn-edge"></span>
                                     <span
                                         class="btn-front"
-                                        style="padding: 6px 12px; font-size: 0.8rem; min-width: auto"
-                                        >+ Upload ROM</span
-                                    >
+                                        style="padding: 6px 12px; font-size: 0.8rem; min-width: auto">
+                                        + Upload ROM
+                                    </span>
                                 </a>
                                 <a
                                     href="/roms/bulk_upload"
                                     class="popout-btn btn-fit btn-info"
-                                    style="text-decoration: none"
-                                >
+                                    style="text-decoration: none">
                                     <span class="btn-edge"></span>
                                     <span
                                         class="btn-front"
-                                        style="padding: 6px 12px; font-size: 0.8rem; min-width: auto"
-                                        >Bulk Import</span
-                                    >
+                                        style="padding: 6px 12px; font-size: 0.8rem; min-width: auto">
+                                        Bulk Import
+                                    </span>
                                 </a>
                             </div>
                         </div>
@@ -222,28 +222,38 @@ class EmunexRomsManagePage extends LitElement {
                                 type="text"
                                 placeholder="Search ROMs by title, ID, or console..."
                                 style="font-weight: 700"
-                                @input=${this._handleSearch}
-                            />
+                                @input=${this._handleSearch} />
                         </div>
 
                         <div style="overflow-x: auto">
                             <table style="margin-top: 0">
                                 <thead>
-                                    <tr><th>ID</th><th>Title</th><th>Console</th><th>Actions</th></tr>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Title</th>
+                                        <th>Console</th>
+                                        <th>Actions</th>
+                                    </tr>
                                 </thead>
                                 <tbody>
                                     ${this._loading
-                                        ? html`<tr><td colspan="5" style="text-align: center">Loading...</td></tr>`
+                                        ? html`
+                                              <tr><td colspan="5" style="text-align: center">Loading...</td></tr>
+                                          `
                                         : ""}
                                     ${this._error
-                                        ? html`<tr
-                                              ><td colspan="5" style="text-align: center; color: var(--color-error)"
-                                                  >${this._error}</td
-                                              ></tr
-                                          >`
+                                        ? html`
+                                              <tr>
+                                                  <td colspan="5" style="text-align: center; color: var(--color-error)">
+                                                      ${this._error}
+                                                  </td>
+                                              </tr>
+                                          `
                                         : ""}
                                     ${!this._loading && !this._error && this._filtered.length === 0
-                                        ? html`<tr><td colspan="5" style="text-align: center">No ROMs found.</td></tr>`
+                                        ? html`
+                                              <tr><td colspan="5" style="text-align: center">No ROMs found.</td></tr>
+                                          `
                                         : ""}
                                     ${this._filtered.map(
                                         (rom) => html`
@@ -252,27 +262,28 @@ class EmunexRomsManagePage extends LitElement {
                                                 <td style="font-weight: 700;">
                                                     ${rom.title}
                                                     ${rom.realname
-                                                        ? html`<br /><span
-                                                                  style="font-weight: normal; font-size: 0.8rem; color: var(--color-text-muted)"
-                                                                  >${rom.realname}</span
-                                                              >`
+                                                        ? html`
+                                                              <br />
+                                                              <span
+                                                                  style="font-weight: normal; font-size: 0.8rem; color: var(--color-text-muted)">
+                                                                  ${rom.realname}
+                                                              </span>
+                                                          `
                                                         : ""}
                                                 </td>
                                                 <td style="font-weight: 800;">${rom.console}</td>
                                                 <td class="action-btns">
                                                     <button
                                                         class="popout-btn btn-fit btn-info"
-                                                        @click=${() => this.openEdit(rom)}
-                                                    >
-                                                        <span class="btn-edge"></span
-                                                        ><span class="btn-front">Edit</span>
+                                                        @click=${() => this.openEdit(rom)}>
+                                                        <span class="btn-edge"></span>
+                                                        <span class="btn-front">Edit</span>
                                                     </button>
                                                     <button
                                                         class="popout-btn btn-fit btn-error"
-                                                        @click=${() => this.deleteRom(rom.id)}
-                                                    >
-                                                        <span class="btn-edge"></span
-                                                        ><span class="btn-front">Delete</span>
+                                                        @click=${() => this.deleteRom(rom.id)}>
+                                                        <span class="btn-edge"></span>
+                                                        <span class="btn-front">Delete</span>
                                                     </button>
                                                 </td>
                                             </tr>
@@ -287,9 +298,9 @@ class EmunexRomsManagePage extends LitElement {
                                   <div
                                       class="status-box ${this._statusType === "error"
                                           ? "status-error"
-                                          : "status-success"}"
-                                      >${this._status}</div
-                                  >
+                                          : "status-success"}">
+                                      ${this._status}
+                                  </div>
                               `
                             : ""}
                     </div>
@@ -309,8 +320,7 @@ class EmunexRomsManagePage extends LitElement {
                             .rom=${this._editingRom}
                             .consoles=${this._consoles}
                             @saved=${this._onSaved}
-                            @cancel=${this.closeModal}
-                        ></emunex-rom-edit-form>
+                            @cancel=${this.closeModal}></emunex-rom-edit-form>
                     </div>
                 </div>
             </div>

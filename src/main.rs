@@ -195,6 +195,8 @@ async fn rocket() -> _ {
                 routes::api::v1::emulators::get_all_emulators,
                 routes::api::v1::emulators::update_emulator,
                 routes::api::v1::emulators::update_emulator_binary,
+                routes::api::v1::emulators::sign_extra_file_upload,
+                routes::api::v1::emulators::confirm_extra_file,
                 routes::api::v1::emulators::delete_emulator,
                 routes::api::v1::saves::upload_save,
                 routes::api::v1::saves::get_all_saves,

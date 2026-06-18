@@ -30,6 +30,7 @@ class EmunexEmulatorsManagePage extends LitElement {
         _editSaveExtensions: { type: Array, state: true },
         _editFileName: { type: String, state: true },
         _dragover: { type: Boolean, state: true },
+        _editExtraFiles: { type: Array, state: true },
     };
 
     static styles = [
@@ -108,6 +109,7 @@ class EmunexEmulatorsManagePage extends LitElement {
         this._dragover = false;
         this._searchTimeout = null;
         this._currentQuery = "";
+        this._editExtraFiles = [];
     }
 
     connectedCallback() {
@@ -188,9 +190,9 @@ class EmunexEmulatorsManagePage extends LitElement {
                         <div class="header-actions">
                             <a href="/emulators/upload" class="popout-btn btn-fit" style="text-decoration: none">
                                 <span class="btn-edge"></span>
-                                <span class="btn-front" style="padding: 6px 12px; font-size: 0.8rem; min-width: auto"
-                                    >+ Upload Emulator</span
-                                >
+                                <span class="btn-front" style="padding: 6px 12px; font-size: 0.8rem; min-width: auto">
+                                    + Upload Emulator
+                                </span>
                             </a>
                         </div>
 
@@ -199,60 +201,69 @@ class EmunexEmulatorsManagePage extends LitElement {
                                 type="text"
                                 placeholder="Search emulators by name..."
                                 style="font-weight: 700"
-                                @input=${this._handleSearch}
-                            />
+                                @input=${this._handleSearch} />
                         </div>
 
                         <div style="overflow-x: auto">
                             <table style="margin-top: 0">
                                 <thead>
-                                    <tr><th>ID</th><th>Name</th><th>Console</th><th>Platform</th><th>Actions</th></tr>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Console</th>
+                                        <th>Platform</th>
+                                        <th>Actions</th>
+                                    </tr>
                                 </thead>
                                 <tbody>
                                     ${this._loading
-                                        ? html`<tr><td colspan="5" style="text-align: center">Loading...</td></tr>`
+                                        ? html`
+                                              <tr><td colspan="5" style="text-align: center">Loading...</td></tr>
+                                          `
                                         : ""}
                                     ${this._error
-                                        ? html`<tr
-                                              ><td colspan="5" style="text-align: center; color: var(--color-error)"
-                                                  >${this._error}</td
-                                              ></tr
-                                          >`
+                                        ? html`
+                                              <tr>
+                                                  <td colspan="5" style="text-align: center; color: var(--color-error)">
+                                                      ${this._error}
+                                                  </td>
+                                              </tr>
+                                          `
                                         : ""}
                                     ${!this._loading && !this._error && this._filtered.length === 0
-                                        ? html`<tr
-                                              ><td colspan="5" style="text-align: center">No emulators found.</td></tr
-                                          >`
+                                        ? html`
+                                              <tr>
+                                                  <td colspan="5" style="text-align: center">No emulators found.</td>
+                                              </tr>
+                                          `
                                         : ""}
                                     ${this._filtered.map(
                                         (emu) => html`
                                             <tr>
                                                 <td
-                                                    style="font-family: monospace; font-weight: 700; color: var(--color-text-muted);"
-                                                    >#${emu.id}</td
-                                                >
+                                                    style="font-family: monospace; font-weight: 700; color: var(--color-text-muted);">
+                                                    #${emu.id}
+                                                </td>
                                                 <td style="font-weight: 700;">${emu.name}</td>
-                                                <td style="font-weight: 800;"
-                                                    >${(emu.consoles || []).map((c) => c.toUpperCase()).join(", ")}</td
-                                                >
+                                                <td style="font-weight: 800;">
+                                                    ${(emu.consoles || []).map((c) => c.toUpperCase()).join(", ")}
+                                                </td>
                                                 <td
-                                                    style="text-transform: uppercase; font-size: 0.8rem; font-weight: 700;"
-                                                    >${emu.platform}</td
-                                                >
+                                                    style="text-transform: uppercase; font-size: 0.8rem; font-weight: 700;">
+                                                    ${emu.platform}
+                                                </td>
                                                 <td class="action-btns">
                                                     <button
                                                         class="popout-btn btn-fit btn-info"
-                                                        @click=${() => this.openEdit(emu)}
-                                                    >
-                                                        <span class="btn-edge"></span
-                                                        ><span class="btn-front">Edit</span>
+                                                        @click=${() => this.openEdit(emu)}>
+                                                        <span class="btn-edge"></span>
+                                                        <span class="btn-front">Edit</span>
                                                     </button>
                                                     <button
                                                         class="popout-btn btn-fit btn-error"
-                                                        @click=${() => this.deleteEmulator(emu.id)}
-                                                    >
-                                                        <span class="btn-edge"></span
-                                                        ><span class="btn-front">Delete</span>
+                                                        @click=${() => this.deleteEmulator(emu.id)}>
+                                                        <span class="btn-edge"></span>
+                                                        <span class="btn-front">Delete</span>
                                                     </button>
                                                 </td>
                                             </tr>
@@ -267,9 +278,9 @@ class EmunexEmulatorsManagePage extends LitElement {
                                   <div
                                       class="status-box ${this._statusType === "error"
                                           ? "status-error"
-                                          : "status-success"}"
-                                      >${this._status}</div
-                                  >
+                                          : "status-success"}">
+                                      ${this._status}
+                                  </div>
                               `
                             : ""}
                     </div>
@@ -298,8 +309,7 @@ class EmunexEmulatorsManagePage extends LitElement {
                                     type="text"
                                     id="edit-version"
                                     .value=${this._editingEmulator.version || ""}
-                                    placeholder="1.0.0"
-                                />
+                                    placeholder="1.0.0" />
                             </div>
 
                             <div class="grid-2">
@@ -307,19 +317,17 @@ class EmunexEmulatorsManagePage extends LitElement {
                                     <label>Consoles (select at least one)</label>
                                     <div
                                         class="checkbox-grid"
-                                        style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 4px;"
-                                    >
+                                        style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 4px;">
                                         ${this._consoles.map(
                                             (c) => html`
                                                 <label
                                                     class="checkbox-row"
-                                                    style="margin: 0; align-items: center; gap: 4px;"
-                                                >
+                                                    style="margin: 0; align-items: center; gap: 4px;">
                                                     <input
                                                         type="checkbox"
                                                         .checked=${this._editConsoles.includes(c.name)}
-                                                        @change=${(e) => this._toggleConsole(c.name, e.target.checked)}
-                                                    />
+                                                        @change=${(e) =>
+                                                            this._toggleConsole(c.name, e.target.checked)} />
                                                     ${c.name.toUpperCase()}
                                                 </label>
                                             `,
@@ -342,8 +350,7 @@ class EmunexEmulatorsManagePage extends LitElement {
                                     type="text"
                                     id="edit-command"
                                     .value=${this._editingEmulator.run_command || ""}
-                                    placeholder="emu.exe {rom}"
-                                />
+                                    placeholder="emu.exe {rom}" />
                             </div>
 
                             <div class="form-group">
@@ -352,8 +359,7 @@ class EmunexEmulatorsManagePage extends LitElement {
                                     type="text"
                                     id="edit-binary-name"
                                     .value=${this._editingEmulator.binary_name || ""}
-                                    placeholder="emulator.exe"
-                                />
+                                    placeholder="emulator.exe" />
                             </div>
 
                             <div class="form-group">
@@ -362,8 +368,7 @@ class EmunexEmulatorsManagePage extends LitElement {
                                     type="text"
                                     id="edit-save-path"
                                     .value=${this._editingEmulator.save_path || ""}
-                                    placeholder="/saves/$rom_name.sav"
-                                />
+                                    placeholder="/saves/$rom_name.sav" />
                             </div>
 
                             <div class="form-group">
@@ -372,8 +377,7 @@ class EmunexEmulatorsManagePage extends LitElement {
                                     type="text"
                                     id="edit-input-config-file"
                                     .value=${this._editingEmulator.input_config_file || ""}
-                                    placeholder="retroarch.cfg"
-                                />
+                                    placeholder="retroarch.cfg" />
                             </div>
 
                             <div class="form-group">
@@ -382,31 +386,31 @@ class EmunexEmulatorsManagePage extends LitElement {
                                     type="text"
                                     id="edit-input-mapper"
                                     .value=${this._editingEmulator.input_mapper || ""}
-                                    placeholder="retroarch"
-                                />
+                                    placeholder="retroarch" />
                             </div>
 
                             <div class="form-group">
-                                <label
-                                    >Save File Extensions (press Enter to add, e.g. <code>.sra</code>,
-                                    <code>.srm</code>)</label
-                                >
+                                <label>
+                                    Save File Extensions (press Enter to add, e.g.
+                                    <code>.sra</code>
+                                    ,
+                                    <code>.srm</code>
+                                    )
+                                </label>
                                 <div class="tag-system">
                                     ${this._editSaveExtensions.map(
-                                        (t) =>
-                                            html`<div class="tag"
-                                                >${t}
-                                                <span class="tag-remove" @click=${() => this._removeSaveExt(t)}
-                                                    >×</span
-                                                ></div
-                                            >`,
+                                        (t) => html`
+                                            <div class="tag">
+                                                ${t}
+                                                <span class="tag-remove" @click=${() => this._removeSaveExt(t)}>×</span>
+                                            </div>
+                                        `,
                                     )}
                                     <div class="tag-input-wrapper">
                                         <input
                                             type="text"
                                             placeholder=".sra"
-                                            @keydown=${(e) => this._handleSaveExtKeydown(e)}
-                                        />
+                                            @keydown=${(e) => this._handleSaveExtKeydown(e)} />
                                     </div>
                                 </div>
                             </div>
@@ -423,8 +427,7 @@ class EmunexEmulatorsManagePage extends LitElement {
                                     @dragenter=${this._dragEnter}
                                     @dragover=${this._dragOver}
                                     @dragleave=${this._dragLeave}
-                                    @drop=${this._drop}
-                                >
+                                    @drop=${this._drop}>
                                     <div class="upload-icon">↑</div>
                                     <div class="upload-info">
                                         <div class="upload-text">Upload emulator bundle</div>
@@ -434,24 +437,125 @@ class EmunexEmulatorsManagePage extends LitElement {
                                         type="file"
                                         id="edit-binary"
                                         style="display: none"
-                                        @change=${this._fileChange}
-                                    />
+                                        @change=${this._fileChange} />
                                 </label>
                             </div>
 
+                            <div class="section-hint" style="margin-top: var(--spacing-md)">Additional Files</div>
+                            <p style="font-size: 0.8rem; color: var(--color-text-muted); margin: 0 0 var(--spacing-md)">
+                                Extra files downloaded and installed to OS-specific paths on the client.
+                                <br />
+                                <strong style="color: var(--color-text)">Supported Replacements:</strong>
+                                <code>$emu_dir</code>
+                                ,
+                                <code>$data_dir</code>
+                                ,
+                                <code>$temp_dir</code>
+                                ,
+                                <code>$save_dir</code>
+                                ,
+                                <code>$bin</code>
+                                ,
+                                <code>%ENV_VAR%</code>
+                                .
+                            </p>
+
+                            ${this._editExtraFiles.map(
+                                (f, i) => html`
+                                    <div
+                                        style="border: 1px solid var(--color-border); border-radius: 6px; padding: var(--spacing-md); margin-bottom: var(--spacing-sm); position: relative;">
+                                        <button
+                                            type="button"
+                                            style="position: absolute; top: 6px; right: 8px; background: none; border: none; cursor: pointer; color: var(--color-error); font-size: 1rem; line-height: 1;"
+                                            @click=${() => this._removeEditExtraFile(i)}
+                                            title="Remove">
+                                            ✕
+                                        </button>
+                                        <div class="form-group">
+                                            <label>${f.s3_path ? "File (replace to re-upload)" : "File"}</label>
+                                            ${f.s3_path
+                                                ? html`
+                                                      <div
+                                                          style="font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: 4px; font-family: monospace;">
+                                                          ${f.s3_path.split("/").pop()}
+                                                      </div>
+                                                  `
+                                                : ""}
+                                            <label
+                                                style="display: flex; align-items: center; gap: var(--spacing-sm); cursor: pointer; border: 1px solid var(--color-border); border-radius: 4px; padding: 8px 10px; background: var(--color-input-bg);">
+                                                <span
+                                                    style="font-size: 0.85rem; color: var(--color-text-muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                    ${f.newFile
+                                                        ? f.newFile.name
+                                                        : f.s3_path
+                                                          ? "Click to replace…"
+                                                          : "Click to choose file…"}
+                                                </span>
+                                                <span
+                                                    style="font-size: 0.75rem; padding: 2px 8px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px;">
+                                                    Browse
+                                                </span>
+                                                <input
+                                                    type="file"
+                                                    style="display:none"
+                                                    @change=${(e) =>
+                                                        this._updateEditExtraFile(i, "newFile", e.target.files[0])} />
+                                            </label>
+                                        </div>
+                                        <div class="grid-2">
+                                            <div class="form-group">
+                                                <label>Windows Path</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="C:\\Emu\\file.dll"
+                                                    .value=${f.windows_path}
+                                                    @input=${(e) =>
+                                                        this._updateEditExtraFile(i, "windows_path", e.target.value)} />
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Linux Path</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="/usr/share/emu/file.so"
+                                                    .value=${f.linux_path}
+                                                    @input=${(e) =>
+                                                        this._updateEditExtraFile(i, "linux_path", e.target.value)} />
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>macOS Path</label>
+                                            <input
+                                                type="text"
+                                                placeholder="/Applications/Emu.app/Contents/Resources/file"
+                                                .value=${f.macos_path}
+                                                @input=${(e) =>
+                                                    this._updateEditExtraFile(i, "macos_path", e.target.value)} />
+                                        </div>
+                                    </div>
+                                `,
+                            )}
+
+                            <button
+                                type="button"
+                                class="popout-btn btn-fit"
+                                style="margin-bottom: var(--spacing-lg);"
+                                @click=${this._addEditExtraFile}>
+                                <span class="btn-edge"></span>
+                                <span class="btn-front" style="padding: 6px 14px; font-size: 0.8rem;">+ Add File</span>
+                            </button>
+
                             <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-lg)">
                                 <button type="submit" class="popout-btn btn-fit btn-info" style="flex: 1">
-                                    <span class="btn-edge"></span
-                                    ><span class="btn-front" style="padding: 10px">Save Changes</span>
+                                    <span class="btn-edge"></span>
+                                    <span class="btn-front" style="padding: 10px">Save Changes</span>
                                 </button>
                                 <button
                                     type="button"
                                     class="popout-btn btn-fit btn-cancel"
                                     style="flex: 1"
-                                    @click=${this.closeModal}
-                                >
-                                    <span class="btn-edge"></span
-                                    ><span class="btn-front" style="padding: 10px">Cancel</span>
+                                    @click=${this.closeModal}>
+                                    <span class="btn-edge"></span>
+                                    <span class="btn-front" style="padding: 10px">Cancel</span>
                                 </button>
                             </div>
                         </form>
@@ -516,6 +620,18 @@ class EmunexEmulatorsManagePage extends LitElement {
         this._editConsoles = [...(emu.consoles || [])];
         this._editSaveExtensions = [...(emu.save_extensions || [])];
         this._editFileName = "";
+        const rawExtra = Array.isArray(emu.extra_files)
+            ? emu.extra_files
+            : typeof emu.extra_files === "string"
+              ? JSON.parse(emu.extra_files || "[]")
+              : [];
+        this._editExtraFiles = rawExtra.map((f) => ({
+            s3_path: f.s3_path || "",
+            windows_path: f.windows_path || "",
+            linux_path: f.linux_path || "",
+            macos_path: f.macos_path || "",
+            newFile: null,
+        }));
         this._editModalOpen = true;
 
         setTimeout(() => {
@@ -529,12 +645,71 @@ class EmunexEmulatorsManagePage extends LitElement {
 
     closeModal() {
         this._editModalOpen = false;
+        this._editExtraFiles = [];
     }
 
     async submitEdit(e) {
         e.preventDefault();
         const id = this._editingEmulator.id;
         const root = this.renderRoot;
+
+        const token = (await cookieStore.get("token"))?.value;
+
+        const existingExtraFiles = this._editExtraFiles
+            .filter((f) => f.s3_path && !f.newFile)
+            .map((f) => ({
+                s3_path: f.s3_path,
+                windows_path: f.windows_path,
+                linux_path: f.linux_path,
+                macos_path: f.macos_path,
+            }));
+
+        for (const f of this._editExtraFiles) {
+            if (!f.newFile) continue;
+
+            const signRes = await fetch(`/api/v1/emulators/${id}/extra-file/sign`, {
+                method: "POST",
+                headers: { Authorization: token, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    filename: f.newFile.name,
+                    windows_path: f.windows_path,
+                    linux_path: f.linux_path,
+                    macos_path: f.macos_path,
+                }),
+            });
+            if (!signRes.ok) {
+                const err = await signRes.json();
+                this.showStatus(`Failed to get upload URL: ${err.error || signRes.statusText}`, "error");
+                return;
+            }
+            const { data: signed } = await signRes.json();
+
+            const putRes = await fetch(signed.upload_url, {
+                method: "PUT",
+                body: f.newFile,
+                headers: { "Content-Type": "application/octet-stream" },
+            });
+            if (!putRes.ok) {
+                this.showStatus(`Direct S3 upload failed for ${f.newFile.name}`, "error");
+                return;
+            }
+
+            const confirmRes = await fetch(`/api/v1/emulators/${id}/extra-file/confirm`, {
+                method: "POST",
+                headers: { Authorization: token, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    s3_path: signed.s3_path,
+                    windows_path: signed.windows_path,
+                    linux_path: signed.linux_path,
+                    macos_path: signed.macos_path,
+                }),
+            });
+            if (!confirmRes.ok) {
+                const err = await confirmRes.json();
+                this.showStatus(`Failed to confirm upload: ${err.error || confirmRes.statusText}`, "error");
+                return;
+            }
+        }
 
         const updateData = {
             name: root.querySelector("#edit-name").value,
@@ -548,10 +723,10 @@ class EmunexEmulatorsManagePage extends LitElement {
             input_mapper: root.querySelector("#edit-input-mapper").value || null,
             zipped: root.querySelector("#edit-zipped").checked,
             version: root.querySelector("#edit-version").value || null,
+            extra_files: existingExtraFiles,
         };
 
         try {
-            const token = (await cookieStore.get("token"))?.value;
             const response = await fetch(`/api/v1/emulators/${id}`, {
                 method: "PUT",
                 headers: { Authorization: token, "Content-Type": "application/json" },
@@ -567,7 +742,6 @@ class EmunexEmulatorsManagePage extends LitElement {
             if (binaryInput.files.length > 0) {
                 const formData = new FormData();
                 formData.append("binary", binaryInput.files[0]);
-                const token = (await cookieStore.get("token"))?.value;
                 const bRes = await fetch(`/api/v1/emulators/${id}/binary`, {
                     method: "POST",
                     headers: { Authorization: token },
@@ -582,6 +756,21 @@ class EmunexEmulatorsManagePage extends LitElement {
         } catch (err) {
             this.showStatus(err.message || "Update failed.", "error");
         }
+    }
+
+    _addEditExtraFile() {
+        this._editExtraFiles = [
+            ...this._editExtraFiles,
+            { s3_path: "", newFile: null, windows_path: "", linux_path: "", macos_path: "" },
+        ];
+    }
+
+    _removeEditExtraFile(index) {
+        this._editExtraFiles = this._editExtraFiles.filter((_, i) => i !== index);
+    }
+
+    _updateEditExtraFile(index, field, value) {
+        this._editExtraFiles = this._editExtraFiles.map((f, i) => (i === index ? { ...f, [field]: value } : f));
     }
 
     async deleteEmulator(id) {

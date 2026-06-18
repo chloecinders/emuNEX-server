@@ -41,16 +41,41 @@ pub struct V1RomListResponse {
 }
 impl V1ApiResponseTrait for Vec<V1RomListResponse> {}
 
-#[get("/api/v1/roms/list?<category>&<console>&<offset>&<limit>")]
+#[get("/api/v1/roms/list?<category>&<console>&<offset>&<limit>&<admin>")]
 pub async fn get_rom_list(
     category: Option<String>,
     console: Option<String>,
     offset: Option<i64>,
     limit: Option<i64>,
-    _user: AuthenticatedUser,
+    admin: Option<bool>,
+    user: AuthenticatedUser,
 ) -> V1ApiResponseType<Vec<V1RomListResponse>> {
     let final_limit = limit.unwrap_or(50).min(50);
     let final_offset = offset.unwrap_or(0);
+
+    if admin.unwrap_or(false) && (user.role == UserRole::Admin || user.role == UserRole::Moderator)
+    {
+        let roms = sqlx::query_as!(
+            V1RomListResponse,
+            r#"SELECT id, title, realname, '/covers_small/' || console || '/' || id || '/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, 1::bigint as "versions_count!"
+               FROM roms
+               WHERE (category = $1 OR $1 IS NULL)
+               AND (console = $2 OR $2 IS NULL)
+               ORDER BY id DESC
+               LIMIT $3 OFFSET $4"#,
+            category,
+            console,
+            final_limit,
+            final_offset
+        )
+        .fetch_all(&*SQL)
+        .await
+        .map_err(|e| {
+            error!("Failed to fetch admin rom list: {:?}", e);
+            V1ApiError::InternalError
+        })?;
+        return Ok(V1ApiResponse(roms));
+    }
 
     let roms = sqlx::query_as!(
         V1RomListResponse,
@@ -240,6 +265,9 @@ pub struct V1RomFullResponse {
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
     pub languages: Option<String>,
     pub versions_count: i64,
+    pub zipped: bool,
+    pub zipped_entry: Option<String>,
+    pub multi_disc_disclaimer: bool,
 }
 impl V1ApiResponseTrait for V1RomFullResponse {}
 impl V1ApiResponseTrait for Vec<V1RomFullResponse> {}
@@ -252,7 +280,10 @@ pub async fn get_rom_single(
     let rom = sqlx::query_as!(
         V1RomFullResponse,
         r#"SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, '/covers/' || r.console || '/' || r.id || '/' || r.image_hash || '.webp' as "image_path!", r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,
-             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!"
+             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!",
+             r.zipped,
+             r.zipped_entry,
+             r.multi_disc_disclaimer
            FROM roms r WHERE r.id = $1"#, 
         id
     )
@@ -267,17 +298,51 @@ pub async fn get_rom_single(
     Ok(V1ApiResponse(rom))
 }
 
-#[get("/api/v1/roms/search?<query>&<category>&<console>&<offset>&<limit>")]
+#[get("/api/v1/roms/search?<query>&<category>&<console>&<offset>&<limit>&<admin>")]
 pub async fn search_roms(
     query: String,
     category: Option<String>,
     console: Option<String>,
     offset: Option<i64>,
     limit: Option<i64>,
-    _user: AuthenticatedUser,
+    admin: Option<bool>,
+    user: AuthenticatedUser,
 ) -> V1ApiResponseType<Vec<V1RomListResponse>> {
     let final_limit = limit.unwrap_or(50).min(50);
     let final_offset = offset.unwrap_or(0);
+
+    if admin.unwrap_or(false) && (user.role == UserRole::Admin || user.role == UserRole::Moderator)
+    {
+        let results = sqlx::query_as!(
+            V1RomListResponse,
+            r#"SELECT id, title, realname, '/covers_small/' || console || '/' || id || '/' || image_hash || '.webp' as "image_path!", console, category, region, release_year, serial, languages, 1::bigint as "versions_count!"
+               FROM roms
+               WHERE (
+                   title ILIKE '%' || $1 || '%'
+                   OR serial ILIKE $1 || '%'
+                   OR realname ILIKE '%' || $1 || '%'
+                   OR id ILIKE '%' || $1 || '%'
+               )
+               AND (category = $2 OR $2 IS NULL)
+               AND (console = $3 OR $3 IS NULL)
+               ORDER BY
+                   CASE WHEN id ILIKE $1 THEN 0 ELSE 1 END,
+                   id DESC
+               LIMIT $4 OFFSET $5"#,
+            query,
+            category,
+            console,
+            final_limit,
+            final_offset
+        )
+        .fetch_all(&*SQL)
+        .await
+        .map_err(|e| {
+            error!("Failed to search admin roms with query '{}': {:?}", query, e);
+            V1ApiError::InternalError
+        })?;
+        return Ok(V1ApiResponse(results));
+    }
 
     let results = sqlx::query_as!(
         V1RomListResponse,
@@ -289,13 +354,14 @@ pub async fn search_roms(
                  title ILIKE '%' || $1 || '%'
                  OR serial ILIKE $1 || '%'
                  OR realname ILIKE '%' || $1 || '%'
+                 OR id ILIKE '%' || $1 || '%'
              )
              AND (category = $2 OR $2 IS NULL)
              AND (console = $3 OR $3 IS NULL)
              ORDER BY console, title, region NULLS LAST, id DESC
          ) sub
          ORDER BY
-             CASE WHEN serial ILIKE $1 THEN 0 ELSE 1 END,
+             CASE WHEN serial ILIKE $1 THEN 0 WHEN id ILIKE $1 THEN 1 ELSE 2 END,
              title ASC
          LIMIT $4 OFFSET $5"#,
         query,
@@ -356,6 +422,9 @@ pub struct V1RomUpload<'r> {
     languages: Option<String>,
     rom_file: TempFile<'r>,
     image_file: TempFile<'r>,
+    zipped: Option<bool>,
+    zipped_entry: Option<String>,
+    multi_disc_disclaimer: Option<bool>,
 }
 
 #[post("/api/v1/roms/upload", format = "multipart/form-data", data = "<data>")]
@@ -367,13 +436,22 @@ pub async fn upload_rom(
         return Err(V1ApiError::MissingPermissions);
     }
 
+    let rom_id = crate::utils::snowflake::next_id();
+
     let rom_filename = data
         .rom_file
         .raw_name()
-        .map(|n| n.dangerous_unsafe_unsanitized_raw())
-        .unwrap_or("file.bin".into());
+        .map(|n| n.dangerous_unsafe_unsanitized_raw().to_string())
+        .unwrap_or_else(|| "file.bin".to_string());
 
-    let rom_ext = Path::new(rom_filename.as_str())
+    let clean_rom_filename = rom_filename
+        .replace('\\', "/")
+        .split('/')
+        .last()
+        .unwrap_or("file.bin")
+        .to_string();
+
+    let rom_ext = Path::new(&clean_rom_filename)
         .extension()
         .and_then(|ext| ext.to_str())
         .unwrap_or("bin");
@@ -421,8 +499,6 @@ pub async fn upload_rom(
         V1ApiError::InternalError
     })?;
 
-    let rom_id = crate::utils::snowflake::next_id();
-
     let img_webp_bytes = buf.into_inner();
     let img_hash = compute_md5(&img_webp_bytes);
     let img_path = format!("/covers/{}/{}/{}.webp", data.console, rom_id, img_hash);
@@ -435,8 +511,8 @@ pub async fn upload_rom(
         })?;
 
     sqlx::query!(
-        "INSERT INTO roms (id, title, realname, console, category, region, serial, release_year, rom_path, image_hash, file_extension, md5_hash, file_size_bytes, languages)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        "INSERT INTO roms (id, title, realname, console, category, region, serial, release_year, rom_path, image_hash, file_extension, md5_hash, file_size_bytes, languages, zipped, zipped_entry, multi_disc_disclaimer)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
          ON CONFLICT (id) DO UPDATE SET
             title = EXCLUDED.title,
             realname = EXCLUDED.realname,
@@ -450,7 +526,10 @@ pub async fn upload_rom(
             file_extension = EXCLUDED.file_extension,
             md5_hash = EXCLUDED.md5_hash,
             file_size_bytes = EXCLUDED.file_size_bytes,
-            languages = EXCLUDED.languages",
+            languages = EXCLUDED.languages,
+            zipped = EXCLUDED.zipped,
+            zipped_entry = EXCLUDED.zipped_entry,
+            multi_disc_disclaimer = EXCLUDED.multi_disc_disclaimer",
         rom_id.to_string(),
         data.title,
         data.realname,
@@ -464,7 +543,10 @@ pub async fn upload_rom(
         rom_ext,
         rom_md5,
         rom_bytes.len() as i64,
-        data.languages
+        data.languages,
+        data.zipped.unwrap_or(false),
+        data.zipped_entry,
+        data.multi_disc_disclaimer.unwrap_or(false)
     )
     .execute(&*SQL)
     .await
@@ -503,6 +585,9 @@ pub struct V1RomUpdateRequest {
     pub release_year: Option<i32>,
     pub serial: Option<String>,
     pub languages: Option<String>,
+    pub zipped: Option<bool>,
+    pub zipped_entry: Option<String>,
+    pub multi_disc_disclaimer: Option<bool>,
 }
 
 #[put("/api/v1/roms/<id>", format = "json", data = "<data>")]
@@ -516,7 +601,7 @@ pub async fn update_rom(
     }
 
     sqlx::query!(
-        "UPDATE roms SET title = $1, realname = $2, console = $3, category = $4, region = $5, release_year = $6, serial = $7, languages = $8 WHERE id = $9",
+        "UPDATE roms SET title = $1, realname = $2, console = $3, category = $4, region = $5, release_year = $6, serial = $7, languages = $8, zipped = $9, zipped_entry = $10, multi_disc_disclaimer = $11 WHERE id = $12",
         data.title,
         data.realname,
         data.console,
@@ -525,6 +610,9 @@ pub async fn update_rom(
         data.release_year,
         data.serial,
         data.languages,
+        data.zipped.unwrap_or(false),
+        data.zipped_entry,
+        data.multi_disc_disclaimer.unwrap_or(false),
         id
     )
     .execute(&*SQL)
@@ -716,6 +804,7 @@ pub async fn delete_rom(id: String, user: AuthenticatedUser) -> V1ApiResponseTyp
     .ok_or(V1ApiError::RomNotFound)?;
 
     let _ = crate::utils::s3::delete_object(&rom.rom_path).await;
+
     let _ = crate::utils::s3::delete_object(&format!(
         "/covers/{}/{}/{}.webp",
         rom.console, id, rom.image_hash
@@ -1036,16 +1125,30 @@ pub async fn bulk_upload_roms(
     )))
 }
 
+#[derive(serde::Serialize)]
+pub struct V1RomDownloadResponse {
+    pub rom_path: String,
+    pub zipped: bool,
+    pub zipped_entry: Option<String>,
+}
+impl V1ApiResponseTrait for V1RomDownloadResponse {}
+
 #[post("/api/v1/roms/<id>/download")]
-pub async fn register_downloaded(id: String, user: AuthenticatedUser) -> V1ApiResponseType<String> {
-    let rom = sqlx::query!("SELECT rom_path FROM roms WHERE id = $1", id)
-        .fetch_optional(&*SQL)
-        .await
-        .map_err(|e| {
-            error!("Failed to fetch rom path for id {}: {:?}", id, e);
-            V1ApiError::InternalError
-        })?
-        .ok_or(V1ApiError::RomNotFound)?;
+pub async fn register_downloaded(
+    id: String,
+    user: AuthenticatedUser,
+) -> V1ApiResponseType<V1RomDownloadResponse> {
+    let rom = sqlx::query!(
+        "SELECT rom_path, zipped, zipped_entry FROM roms WHERE id = $1",
+        id
+    )
+    .fetch_optional(&*SQL)
+    .await
+    .map_err(|e| {
+        error!("Failed to fetch rom path for id {}: {:?}", id, e);
+        V1ApiError::InternalError
+    })?
+    .ok_or(V1ApiError::RomNotFound)?;
 
     let user_rom_id = crate::utils::snowflake::next_id();
 
@@ -1064,7 +1167,11 @@ pub async fn register_downloaded(id: String, user: AuthenticatedUser) -> V1ApiRe
         V1ApiError::InternalError
     })?;
 
-    Ok(V1ApiResponse(rom.rom_path))
+    Ok(V1ApiResponse(V1RomDownloadResponse {
+        rom_path: rom.rom_path,
+        zipped: rom.zipped,
+        zipped_entry: rom.zipped_entry,
+    }))
 }
 
 #[derive(serde::Deserialize)]
@@ -1138,7 +1245,10 @@ pub async fn get_bulk_rom_info(
     let roms = sqlx::query_as!(
         V1RomFullResponse,
         r#"SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, '/covers_small/' || r.console || '/' || r.id || '/' || r.image_hash || '.webp' as "image_path!", r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,
-             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!"
+             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as "versions_count!",
+             r.zipped,
+             r.zipped_entry,
+             r.multi_disc_disclaimer
            FROM roms r WHERE r.id = ANY($1)"#,
         &ids
     )

@@ -286,6 +286,23 @@ export const buttonStyles = css`
         --btn-color-primary: #666;
         --btn-color-dark: #333;
     }
+    .popout-btn.btn-secondary {
+        --btn-color-primary: var(--color-border);
+        --btn-color-dark: var(--color-text-muted);
+    }
+    .popout-btn.btn-secondary .btn-front {
+        color: var(--color-text);
+        text-shadow: none;
+        border: 1px solid var(--color-border-hover, var(--color-border));
+    }
+    :host-context([data-theme="dark"]) .popout-btn.btn-secondary {
+        --btn-color-primary: #4a4a5a;
+        --btn-color-dark: #2b2b36;
+    }
+    :host-context([data-theme="dark"]) .popout-btn.btn-secondary .btn-front {
+        color: #ffffff;
+        border-color: #5b5b6a;
+    }
 `;
 
 export const tableStyles = css`

@@ -12,6 +12,8 @@ export class EmunexRomEditForm extends LitElement {
         _previewImageUrl: { type: String, state: true },
         _status: { type: String, state: true },
         _statusType: { type: String, state: true },
+        _zipped: { type: Boolean, state: true },
+        _zippedEntry: { type: String, state: true },
         embedded: { type: Boolean },
     };
 
@@ -68,12 +70,16 @@ export class EmunexRomEditForm extends LitElement {
         this._previewImageUrl = "";
         this._status = "";
         this._statusType = "";
+        this._zipped = false;
+        this._zippedEntry = "";
     }
 
     updated(changedProps) {
         if (changedProps.has("rom") && this.rom) {
             this._editRomFileName = "";
             this._editImageFileName = "";
+            this._zipped = this.rom.zipped || false;
+            this._zippedEntry = this.rom.zipped_entry || "";
             this._previewImageUrl = this.rom.image_path
                 ? this.rom.image_path.startsWith("blob:")
                     ? this.rom.image_path
@@ -108,6 +114,9 @@ export class EmunexRomEditForm extends LitElement {
             region: root.querySelector("#edit-region").value || null,
             serial: root.querySelector("#edit-serial").value || null,
             md5_hash: root.querySelector("#edit-md5").value || null,
+            zipped: this._zipped,
+            zipped_entry: this._zipped ? this._zippedEntry : null,
+            multi_disc_disclaimer: root.querySelector("#edit-multi-disc-disclaimer").checked,
         };
 
         const token = (await cookieStore.get("token"))?.value;
@@ -168,7 +177,13 @@ export class EmunexRomEditForm extends LitElement {
         const input = this.renderRoot.querySelector("#" + id);
         input.files = e.dataTransfer.files;
         if (input.files.length) {
-            this[`_${prop}`] = input.files[0].name;
+            const fileName = input.files[0].name;
+            this[`_${prop}`] = fileName;
+            if (prop === "editRomFileName") {
+                if (fileName.toLowerCase().endsWith(".zip")) {
+                    this._zipped = true;
+                }
+            }
             if (prop === "editImageFileName") {
                 if (this._previewImageUrl && this._previewImageUrl.startsWith("blob:"))
                     URL.revokeObjectURL(this._previewImageUrl);
@@ -178,7 +193,13 @@ export class EmunexRomEditForm extends LitElement {
     }
     _fileChange(e, prop) {
         if (e.target.files.length) {
-            this[`_${prop}`] = e.target.files[0].name;
+            const fileName = e.target.files[0].name;
+            this[`_${prop}`] = fileName;
+            if (prop === "editRomFileName") {
+                if (fileName.toLowerCase().endsWith(".zip")) {
+                    this._zipped = true;
+                }
+            }
             if (prop === "editImageFileName") {
                 if (this._previewImageUrl && this._previewImageUrl.startsWith("blob:"))
                     URL.revokeObjectURL(this._previewImageUrl);
@@ -189,9 +210,9 @@ export class EmunexRomEditForm extends LitElement {
 
     render() {
         if (!this.rom || !this.rom.id)
-            return html`<div style="padding: 1rem; text-align: center; color: var(--color-text-muted);"
-                >No ROM selected...</div
-            >`;
+            return html`
+                <div style="padding: 1rem; text-align: center; color: var(--color-text-muted);">No ROM selected...</div>
+            `;
         return html`
             <form id="editForm" @submit=${this.submitEdit}>
                 <div class="form-group">
@@ -219,7 +240,11 @@ export class EmunexRomEditForm extends LitElement {
                         <label>Console</label>
                         <select id="edit-console" required>
                             <option value="">select console</option>
-                            ${this.consoles.map((c) => html`<option value=${c.name}>${c.name.toUpperCase()}</option>`)}
+                            ${this.consoles.map(
+                                (c) => html`
+                                    <option value=${c.name}>${c.name.toUpperCase()}</option>
+                                `,
+                            )}
                         </select>
                     </div>
                     <div class="form-group">
@@ -243,6 +268,46 @@ export class EmunexRomEditForm extends LitElement {
                     </div>
                 </div>
 
+                <div
+                    class="form-group"
+                    style="display: flex; align-items: center; gap: 8px; margin-top: var(--spacing-sm);">
+                    <input
+                        type="checkbox"
+                        id="edit-multi-disc-disclaimer"
+                        ?checked=${this.rom.multi_disc_disclaimer}
+                        style="width: auto; margin: 0;" />
+                    <label for="edit-multi-disc-disclaimer" style="margin: 0; font-weight: 700; cursor: pointer;">
+                        Display Multi-Disc Swap Disclaimer
+                    </label>
+                </div>
+
+                <div
+                    class="form-group"
+                    style="display: flex; align-items: center; gap: 8px; margin-top: var(--spacing-sm);">
+                    <input
+                        type="checkbox"
+                        id="edit-zipped"
+                        ?checked=${this._zipped}
+                        style="width: auto; margin: 0;"
+                        @change=${(e) => (this._zipped = e.target.checked)} />
+                    <label for="edit-zipped" style="margin: 0; font-weight: 700; cursor: pointer;">Zipped ROM</label>
+                </div>
+
+                ${this._zipped
+                    ? html`
+                          <div class="form-group">
+                              <label for="edit-zipped-entry">Starting ROM Entry File (inside ZIP, e.g. game.cue)</label>
+                              <input
+                                  type="text"
+                                  id="edit-zipped-entry"
+                                  placeholder="game.cue"
+                                  .value=${this._zippedEntry || ""}
+                                  @input=${(e) => (this._zippedEntry = e.target.value)}
+                                  required />
+                          </div>
+                      `
+                    : ""}
+
                 <div class="section-hint">Update Assets (Leave blank to keep current)</div>
 
                 <div class="form-group">
@@ -252,8 +317,7 @@ export class EmunexRomEditForm extends LitElement {
                         @dragenter=${(e) => this._dragEnter(e, "rom")}
                         @dragover=${(e) => this._dragEnter(e, "rom")}
                         @dragleave=${(e) => this._dragLeave(e, "rom")}
-                        @drop=${(e) => this._drop(e, "edit-rom", "editRomFileName")}
-                    >
+                        @drop=${(e) => this._drop(e, "edit-rom", "editRomFileName")}>
                         <div class="upload-icon">↑</div>
                         <div class="upload-info">
                             <div class="upload-text">Upload new ROM</div>
@@ -263,8 +327,7 @@ export class EmunexRomEditForm extends LitElement {
                             type="file"
                             id="edit-rom"
                             style="display: none"
-                            @change=${(e) => this._fileChange(e, "editRomFileName")}
-                        />
+                            @change=${(e) => this._fileChange(e, "editRomFileName")} />
                     </label>
                 </div>
 
@@ -275,8 +338,7 @@ export class EmunexRomEditForm extends LitElement {
                             ? html`
                                   <img
                                       src=${this._previewImageUrl}
-                                      style="width: 100px; height: 140px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--color-border); flex-shrink: 0;"
-                                  />
+                                      style="width: 100px; height: 140px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--color-border); flex-shrink: 0;" />
                               `
                             : ""}
                         <label
@@ -285,8 +347,7 @@ export class EmunexRomEditForm extends LitElement {
                             @dragenter=${(e) => this._dragEnter(e, "image")}
                             @dragover=${(e) => this._dragEnter(e, "image")}
                             @dragleave=${(e) => this._dragLeave(e, "image")}
-                            @drop=${(e) => this._drop(e, "edit-image", "editImageFileName")}
-                        >
+                            @drop=${(e) => this._drop(e, "edit-image", "editImageFileName")}>
                             <div class="upload-icon">↑</div>
                             <div class="upload-info">
                                 <div class="upload-text">Upload new cover</div>
@@ -296,23 +357,25 @@ export class EmunexRomEditForm extends LitElement {
                                 type="file"
                                 id="edit-image"
                                 style="display: none"
-                                @change=${(e) => this._fileChange(e, "editImageFileName")}
-                            />
+                                @change=${(e) => this._fileChange(e, "editImageFileName")} />
                         </label>
                     </div>
                 </div>
 
                 ${this._status
-                    ? html`<div
-                          class="status-box ${this._statusType === "error" ? "status-error" : "status-success"}"
-                          style="margin-top: var(--spacing-md);"
-                          >${this._status}</div
-                      >`
+                    ? html`
+                          <div
+                              class="status-box ${this._statusType === "error" ? "status-error" : "status-success"}"
+                              style="margin-top: var(--spacing-md);">
+                              ${this._status}
+                          </div>
+                      `
                     : ""}
 
                 <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-lg)">
                     <button type="submit" class="popout-btn btn-fit" style="flex: 1">
-                        <span class="btn-edge"></span><span class="btn-front" style="padding: 10px">Save Changes</span>
+                        <span class="btn-edge"></span>
+                        <span class="btn-front" style="padding: 10px">Save Changes</span>
                     </button>
                     ${!this.embedded
                         ? html`
@@ -321,10 +384,9 @@ export class EmunexRomEditForm extends LitElement {
                                   class="popout-btn btn-fit btn-cancel"
                                   style="flex: 1"
                                   @click=${() =>
-                                      this.dispatchEvent(new CustomEvent("cancel", { bubbles: true, composed: true }))}
-                              >
-                                  <span class="btn-edge"></span
-                                  ><span class="btn-front" style="padding: 10px">Cancel</span>
+                                      this.dispatchEvent(new CustomEvent("cancel", { bubbles: true, composed: true }))}>
+                                  <span class="btn-edge"></span>
+                                  <span class="btn-front" style="padding: 10px">Cancel</span>
                               </button>
                           `
                         : ""}

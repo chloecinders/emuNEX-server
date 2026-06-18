@@ -34,6 +34,8 @@ class EmunexRomPage extends LitElement {
         _dragoverImage: { type: Boolean, state: true },
         _dragoverDat: { type: Boolean, state: true },
         _previewImageUrl: { type: String, state: true },
+        _zipped: { type: Boolean, state: true },
+        _zippedEntry: { type: String, state: true },
     };
 
     static styles = [
@@ -165,6 +167,8 @@ class EmunexRomPage extends LitElement {
         this._previewImageUrl = "";
         this._searchTimeout = null;
         this._notesTimeout = null;
+        this._zipped = false;
+        this._zippedEntry = "";
     }
 
     connectedCallback() {
@@ -229,8 +233,7 @@ class EmunexRomPage extends LitElement {
                                             id="title"
                                             name="title"
                                             placeholder="Metroid Fusion"
-                                            required
-                                        />
+                                            required />
                                     </div>
                                     <div class="form-group">
                                         <label for="realname">Real Name (Optional)</label>
@@ -238,8 +241,7 @@ class EmunexRomPage extends LitElement {
                                             type="text"
                                             id="realname"
                                             name="realname"
-                                            placeholder="Full Retail Name"
-                                        />
+                                            placeholder="Full Retail Name" />
                                     </div>
                                 </div>
 
@@ -254,7 +256,9 @@ class EmunexRomPage extends LitElement {
                                         <select id="console" name="console" required>
                                             <option value="">select console</option>
                                             ${this._consoles.map(
-                                                (c) => html`<option value=${c.name}>${c.name.toUpperCase()}</option>`,
+                                                (c) => html`
+                                                    <option value=${c.name}>${c.name.toUpperCase()}</option>
+                                                `,
                                             )}
                                         </select>
                                     </div>
@@ -265,8 +269,7 @@ class EmunexRomPage extends LitElement {
                                             id="category"
                                             name="category"
                                             placeholder="Action"
-                                            required
-                                        />
+                                            required />
                                     </div>
                                     <div class="form-group">
                                         <label for="serial">Serial Number</label>
@@ -285,6 +288,21 @@ class EmunexRomPage extends LitElement {
                                     </div>
                                 </div>
 
+                                <div
+                                    class="form-group"
+                                    style="display: flex; align-items: center; gap: 8px; margin-top: var(--spacing-sm);">
+                                    <input
+                                        type="checkbox"
+                                        id="multi_disc_disclaimer"
+                                        name="multi_disc_disclaimer"
+                                        style="width: auto; margin: 0;" />
+                                    <label
+                                        for="multi_disc_disclaimer"
+                                        style="margin: 0; font-weight: 700; cursor: pointer;">
+                                        Display Multi-Disc Swap Disclaimer
+                                    </label>
+                                </div>
+
                                 <div class="section-hint">Assets</div>
 
                                 <div class="form-group">
@@ -294,8 +312,7 @@ class EmunexRomPage extends LitElement {
                                         @dragenter=${(e) => this._dragEnter(e, "rom")}
                                         @dragover=${(e) => this._dragEnter(e, "rom")}
                                         @dragleave=${(e) => this._dragLeave(e, "rom")}
-                                        @drop=${(e) => this._drop(e, "rom_file", "romFileName")}
-                                    >
+                                        @drop=${(e) => this._drop(e, "rom_file", "romFileName")}>
                                         <div class="upload-icon">↑</div>
                                         <div class="upload-info">
                                             <div class="upload-text">Upload ROM file</div>
@@ -307,10 +324,42 @@ class EmunexRomPage extends LitElement {
                                             name="rom_file"
                                             required
                                             style="display: none"
-                                            @change=${(e) => this._fileChange(e, "romFileName")}
-                                        />
+                                            @change=${(e) => this._fileChange(e, "romFileName")} />
                                     </label>
                                 </div>
+
+                                <div
+                                    class="form-group"
+                                    style="display: flex; align-items: center; gap: 8px; margin-top: var(--spacing-sm);">
+                                    <input
+                                        type="checkbox"
+                                        id="zipped"
+                                        name="zipped"
+                                        style="width: auto; margin: 0;"
+                                        .checked=${this._zipped}
+                                        @change=${(e) => (this._zipped = e.target.checked)} />
+                                    <label for="zipped" style="margin: 0; font-weight: 700; cursor: pointer;">
+                                        Zipped ROM
+                                    </label>
+                                </div>
+
+                                ${this._zipped
+                                    ? html`
+                                          <div class="form-group">
+                                              <label for="zipped_entry">
+                                                  Starting ROM Entry File (inside ZIP, e.g. game.cue)
+                                              </label>
+                                              <input
+                                                  type="text"
+                                                  id="zipped_entry"
+                                                  name="zipped_entry"
+                                                  placeholder="game.cue"
+                                                  .value=${this._zippedEntry || ""}
+                                                  @input=${(e) => (this._zippedEntry = e.target.value)}
+                                                  required />
+                                          </div>
+                                      `
+                                    : ""}
 
                                 <div class="form-group">
                                     <label>Cover Image</label>
@@ -319,8 +368,7 @@ class EmunexRomPage extends LitElement {
                                             ? html`
                                                   <img
                                                       src=${this._previewImageUrl}
-                                                      style="width: 100px; height: 140px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--color-border); flex-shrink: 0;"
-                                                  />
+                                                      style="width: 100px; height: 140px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--color-border); flex-shrink: 0;" />
                                               `
                                             : ""}
                                         <label
@@ -329,8 +377,7 @@ class EmunexRomPage extends LitElement {
                                             @dragenter=${(e) => this._dragEnter(e, "image")}
                                             @dragover=${(e) => this._dragEnter(e, "image")}
                                             @dragleave=${(e) => this._dragLeave(e, "image")}
-                                            @drop=${(e) => this._drop(e, "image_file", "imageFileName")}
-                                        >
+                                            @drop=${(e) => this._drop(e, "image_file", "imageFileName")}>
                                             <div class="upload-icon">↑</div>
                                             <div class="upload-info">
                                                 <div class="upload-text">Upload cover image</div>
@@ -342,17 +389,16 @@ class EmunexRomPage extends LitElement {
                                                 name="image_file"
                                                 required
                                                 style="display: none"
-                                                @change=${(e) => this._fileChange(e, "imageFileName")}
-                                            />
+                                                @change=${(e) => this._fileChange(e, "imageFileName")} />
                                         </label>
                                     </div>
                                 </div>
 
                                 <button type="submit" class="popout-btn" ?disabled=${this._loading}>
                                     <span class="btn-edge"></span>
-                                    <span class="btn-front"
-                                        >${this._loading ? "Processing…" : "Upload to Collection"}</span
-                                    >
+                                    <span class="btn-front">
+                                        ${this._loading ? "Processing…" : "Upload to Collection"}
+                                    </span>
                                 </button>
                             </form>
 
@@ -367,44 +413,43 @@ class EmunexRomPage extends LitElement {
                                             @dragenter=${(e) => this._dragEnter(e, "dat")}
                                             @dragover=${(e) => this._dragEnter(e, "dat")}
                                             @dragleave=${(e) => this._dragLeave(e, "dat")}
-                                            @drop=${(e) => this._drop(e, "noIntroFile", "datFileName")}
-                                        >
-                                            <div class="upload-info" style="gap: 4px"
-                                                ><div class="upload-text" style="font-size: 0.8rem"
-                                                    >Drop .dat/.xml here</div
-                                                >
-                                                <div class="file-name" style="font-size: 0.75rem"
-                                                    >${this._datFileName}</div
-                                                ></div
-                                            >
+                                            @drop=${(e) => this._drop(e, "noIntroFile", "datFileName")}>
+                                            <div class="upload-info" style="gap: 4px">
+                                                <div class="upload-text" style="font-size: 0.8rem">
+                                                    Drop .dat/.xml here
+                                                </div>
+                                                <div class="file-name" style="font-size: 0.75rem">
+                                                    ${this._datFileName}
+                                                </div>
+                                            </div>
                                             <input
                                                 type="file"
                                                 id="noIntroFile"
                                                 accept=".dat,.xml"
                                                 style="display: none"
-                                                @change=${(e) => this._fileChange(e, "datFileName")}
-                                            />
+                                                @change=${(e) => this._fileChange(e, "datFileName")} />
                                         </label>
                                     </div>
                                     <button
                                         type="button"
                                         class="popout-btn btn-fit"
                                         style="margin: 0; min-width: 120px"
-                                        @click=${this._importDat}
-                                    >
-                                        <span class="btn-edge"></span
-                                        ><span class="btn-front" style="padding: 8px 14px; font-size: 0.8rem;"
-                                            >Import Dump</span
-                                        >
+                                        @click=${this._importDat}>
+                                        <span class="btn-edge"></span>
+                                        <span class="btn-front" style="padding: 8px 14px; font-size: 0.8rem;">
+                                            Import Dump
+                                        </span>
                                     </button>
                                 </div>
 
                                 <div class="form-group">
                                     <label>Platform</label>
                                     <select id="noIntroDatPicker" @change=${this._handleDatChange}>
-                                        <option value="">— select a dat —</option>
+                                        <option value="">- select a dat -</option>
                                         ${this._dats.map(
-                                            (dat) => html`<option value="${dat.name}">${dat.name}</option>`,
+                                            (dat) => html`
+                                                <option value="${dat.name}">${dat.name}</option>
+                                            `,
                                         )}
                                     </select>
                                 </div>
@@ -414,33 +459,35 @@ class EmunexRomPage extends LitElement {
                                         type="text"
                                         id="noIntroSearch"
                                         placeholder="Search games by title or serial..."
-                                        @input=${this._handleDatSearch}
-                                    />
+                                        @input=${this._handleDatSearch} />
                                 </div>
 
                                 <div class="nointro-game-list">
                                     ${!this._currentDat
-                                        ? html`<div class="nointro-empty">Select a platform to browse games</div>`
+                                        ? html`
+                                              <div class="nointro-empty">Select a platform to browse games</div>
+                                          `
                                         : this._noIntroGames.length === 0
-                                          ? html`<div class="nointro-empty">No games found / Searching…</div>`
+                                          ? html`
+                                                <div class="nointro-empty">No games found / Searching…</div>
+                                            `
                                           : this._noIntroGames.map(
                                                 (g, idx) => html`
                                                     <div class="nointro-game-row">
-                                                        <span class="nointro-game-name" title="${g.name || "Unknown"}"
-                                                            >${g.name || "Unknown"}</span
-                                                        >
-                                                        <span class="nointro-serial">${g.serial || "—"}</span>
+                                                        <span class="nointro-game-name" title="${g.name || "Unknown"}">
+                                                            ${g.name || "Unknown"}
+                                                        </span>
+                                                        <span class="nointro-serial">${g.serial || "-"}</span>
                                                         <span class="nointro-md5">${(g.md5 || "").slice(0, 8)}…</span>
                                                         <button
                                                             class="popout-btn btn-fit"
-                                                            @click=${() => this._selectDatGame(g)}
-                                                        >
-                                                            <span class="btn-edge"></span
-                                                            ><span
+                                                            @click=${() => this._selectDatGame(g)}>
+                                                            <span class="btn-edge"></span>
+                                                            <span
                                                                 class="btn-front"
-                                                                style="padding: 6px 12px; font-size: 0.75rem;"
-                                                                >Select</span
-                                                            >
+                                                                style="padding: 6px 12px; font-size: 0.75rem;">
+                                                                Select
+                                                            </span>
                                                         </button>
                                                     </div>
                                                 `,
@@ -454,15 +501,14 @@ class EmunexRomPage extends LitElement {
                                         placeholder="Serial formats for this platform, known issues..."
                                         style="min-height: 120px; font-size: 0.85rem;"
                                         .value=${this._datNotes}
-                                        @input=${this._handleNotesChange}
-                                    ></textarea>
+                                        @input=${this._handleNotesChange}></textarea>
                                 </div>
 
                                 ${this._noIntroStatus
                                     ? html`
-                                          <div class="status-box status-success" style="display: block"
-                                              >${this._noIntroStatus}</div
-                                          >
+                                          <div class="status-box status-success" style="display: block">
+                                              ${this._noIntroStatus}
+                                          </div>
                                       `
                                     : ""}
                             </div>
@@ -473,9 +519,9 @@ class EmunexRomPage extends LitElement {
                                   <div
                                       class="status-box ${this._statusType === "error"
                                           ? "status-error"
-                                          : "status-success"}"
-                                      >${this._status}</div
-                                  >
+                                          : "status-success"}">
+                                      ${this._status}
+                                  </div>
                               `
                             : ""}
                     </div>
@@ -504,7 +550,13 @@ class EmunexRomPage extends LitElement {
         const input = this.renderRoot.querySelector("#" + inputId);
         input.files = e.dataTransfer.files;
         if (input.files.length) {
-            this[`_${propName}`] = input.files[0].name;
+            const fileName = input.files[0].name;
+            this[`_${propName}`] = fileName;
+            if (propName === "romFileName") {
+                if (fileName.toLowerCase().endsWith(".zip")) {
+                    this._zipped = true;
+                }
+            }
             if (propName === "imageFileName") {
                 if (this._previewImageUrl && this._previewImageUrl.startsWith("blob:"))
                     URL.revokeObjectURL(this._previewImageUrl);
@@ -514,7 +566,13 @@ class EmunexRomPage extends LitElement {
     }
     _fileChange(e, propName) {
         if (e.target.files.length) {
-            this[`_${propName}`] = e.target.files[0].name;
+            const fileName = e.target.files[0].name;
+            this[`_${propName}`] = fileName;
+            if (propName === "romFileName") {
+                if (fileName.toLowerCase().endsWith(".zip")) {
+                    this._zipped = true;
+                }
+            }
             if (propName === "imageFileName") {
                 if (this._previewImageUrl && this._previewImageUrl.startsWith("blob:"))
                     URL.revokeObjectURL(this._previewImageUrl);
@@ -537,10 +595,17 @@ class EmunexRomPage extends LitElement {
             formData.set(
                 "title_id",
                 titleRaw
-                    .replace(/\\s+/g, "_")
-                    .replace(/[^a-zA-Z0-9_\\-]/g, "")
+                    .replace(/\s+/g, "_")
+                    .replace(/[^a-zA-Z0-9_\-]/g, "")
                     .slice(0, 64) || `ROM_${Date.now()}`,
             );
+        }
+
+        formData.set("zipped", this._zipped);
+        if (this._zipped) {
+            formData.set("zipped_entry", this._zippedEntry);
+        } else {
+            formData.delete("zipped_entry");
         }
 
         try {
@@ -558,6 +623,8 @@ class EmunexRomPage extends LitElement {
                 form.reset();
                 this._romFileName = "";
                 this._imageFileName = "";
+                this._zipped = false;
+                this._zippedEntry = "";
             } else {
                 this._status = `Error: ${result.error || "Upload failed"}`;
                 this._statusType = "error";

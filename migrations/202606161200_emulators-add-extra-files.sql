@@ -1,0 +1,1 @@
+ALTER TABLE emulators ADD COLUMN IF NOT EXISTS extra_files JSONB NOT NULL DEFAULT '[]'::jsonb;

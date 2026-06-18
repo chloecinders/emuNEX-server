@@ -23,6 +23,7 @@ class EmunexEmulatorPage extends LitElement {
         _saveExtensions: { type: Array, state: true },
         _fileName: { type: String, state: true },
         _dragover: { type: Boolean, state: true },
+        _extraFiles: { type: Array, state: true },
     };
 
     static styles = [
@@ -63,6 +64,7 @@ class EmunexEmulatorPage extends LitElement {
         this._saveExtensions = [];
         this._fileName = "";
         this._dragover = false;
+        this._extraFiles = [];
     }
 
     connectedCallback() {
@@ -108,23 +110,21 @@ class EmunexEmulatorPage extends LitElement {
                                     <label>Consoles (select at least one)</label>
                                     <div
                                         class="checkbox-grid"
-                                        style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 4px;"
-                                    >
+                                        style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 4px;">
                                         ${this._consoles.map(
-                                            (c) => html`
+            (c) => html`
                                                 <label
                                                     class="checkbox-row"
-                                                    style="margin: 0; align-items: center; gap: 4px;"
-                                                >
+                                                    style="margin: 0; align-items: center; gap: 4px;">
                                                     <input
                                                         type="checkbox"
                                                         .checked=${this._selectedConsoles.includes(c.name)}
-                                                        @change=${(e) => this._toggleConsole(c.name, e.target.checked)}
-                                                    />
+                                                        @change=${(e) =>
+                    this._toggleConsole(c.name, e.target.checked)} />
                                                     ${c.name.toUpperCase()}
                                                 </label>
                                             `,
-                                        )}
+        )}
                                     </div>
                                 </div>
                             </div>
@@ -144,7 +144,7 @@ class EmunexEmulatorPage extends LitElement {
                             </div>
 
                             <div class="form-group">
-                                <label for="binary_name">Binary Name (e.g. snes9x-x64.exe)</label>
+                                <label for="binary_name">Binary Name</label>
                                 <input type="text" id="binary_name" name="binary_name" placeholder="snes9x.exe" />
                             </div>
 
@@ -154,13 +154,12 @@ class EmunexEmulatorPage extends LitElement {
                             </div>
 
                             <div class="form-group">
-                                <label for="input_config_file">Input Config File (e.g. retroarch.cfg)</label>
+                                <label for="input_config_file">Input Config File</label>
                                 <input
                                     type="text"
                                     id="input_config_file"
                                     name="input_config_file"
-                                    placeholder="retroarch.cfg"
-                                />
+                                    placeholder="retroarch.cfg" />
                             </div>
 
                             <div class="form-group">
@@ -169,20 +168,22 @@ class EmunexEmulatorPage extends LitElement {
                             </div>
 
                             <div class="form-group">
-                                <label
-                                    >Save File Extensions (press Enter to add, e.g. <code>.sra</code>,
-                                    <code>.srm</code>)</label
-                                >
+                                <label>
+                                    Save File Extensions (press Enter to add, e.g.
+                                    <code>.sra</code>
+                                    ,
+                                    <code>.srm</code>
+                                    )
+                                </label>
                                 <div class="tag-system">
                                     ${this._saveExtensions.map(
-                                        (t) =>
-                                            html`<div class="tag"
-                                                >${t}
-                                                <span class="tag-remove" @click=${() => this._removeSaveExt(t)}
-                                                    >×</span
-                                                ></div
-                                            >`,
-                                    )}
+            (t) => html`
+                                            <div class="tag">
+                                                ${t}
+                                                <span class="tag-remove" @click=${() => this._removeSaveExt(t)}>×</span>
+                                            </div>
+                                        `,
+        )}
                                     <div class="tag-input-wrapper">
                                         <input type="text" placeholder=".sra" @keydown=${this._handleSaveExtKeydown} />
                                     </div>
@@ -203,8 +204,7 @@ class EmunexEmulatorPage extends LitElement {
                                     @dragenter=${this._dragEnter}
                                     @dragover=${this._dragOver}
                                     @dragleave=${this._dragLeave}
-                                    @drop=${this._drop}
-                                >
+                                    @drop=${this._drop}>
                                     <div class="upload-icon">↑</div>
                                     <div class="upload-info">
                                         <div class="upload-text">Upload emulator bundle</div>
@@ -216,10 +216,78 @@ class EmunexEmulatorPage extends LitElement {
                                         name="binary_file"
                                         required
                                         style="display: none"
-                                        @change=${this._fileChange}
-                                    />
+                                        @change=${this._fileChange} />
                                 </label>
                             </div>
+
+                            <div class="section-hint" style="margin-top: var(--spacing-lg)">Additional Files</div>
+
+                            ${this._extraFiles.map(
+            (f, i) => html`
+                                    <div
+                                        style="border: 1px solid var(--color-border); border-radius: 6px; padding: var(--spacing-md); margin-bottom: var(--spacing-md); position: relative; display: flex; flex-direction: column; gap: var(--spacing-md);">
+                                        <button
+                                            type="button"
+                                            style="position: absolute; top: 8px; right: 8px; background: none; border: none; cursor: pointer; color: var(--color-error); font-size: 1rem; line-height: 1;"
+                                            @click=${() => this._removeExtraFile(i)}
+                                            title="Remove">
+                                            ✕
+                                        </button>
+                                        <div class="form-group">
+                                            <label>File</label>
+                                            <label class="upload-zone">
+                                                <div class="upload-icon">↑</div>
+                                                <div class="upload-info">
+                                                    <div class="upload-text">
+                                                        ${f.file ? f.file.name : "Click to choose file…"}
+                                                    </div>
+                                                </div>
+                                                <input
+                                                    type="file"
+                                                    style="display:none"
+                                                    @change=${(e) =>
+                    this._updateExtraFile(i, "file", e.target.files[0])} />
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Windows Install Path</label>
+                                            <input
+                                                type="text"
+                                                placeholder="C:\\Program Files\\Emu\\file.dll"
+                                                .value=${f.windows_path}
+                                                @input=${(e) =>
+                    this._updateExtraFile(i, "windows_path", e.target.value)} />
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Linux Install Path</label>
+                                            <input
+                                                type="text"
+                                                placeholder="/usr/share/emu/file.so"
+                                                .value=${f.linux_path}
+                                                @input=${(e) =>
+                    this._updateExtraFile(i, "linux_path", e.target.value)} />
+                                        </div>
+                                        <div class="form-group">
+                                            <label>macOS Install Path</label>
+                                            <input
+                                                type="text"
+                                                placeholder="/Applications/com.chloecinders.emuNEX/Contents/Resources/file"
+                                                .value=${f.macos_path}
+                                                @input=${(e) =>
+                    this._updateExtraFile(i, "macos_path", e.target.value)} />
+                                        </div>
+                                    </div>
+                                `,
+        )}
+
+                            <button
+                                type="button"
+                                class="popout-btn btn-fit btn-secondary"
+                                style="margin-bottom: var(--spacing-lg);"
+                                @click=${this._addExtraFile}>
+                                <span class="btn-edge"></span>
+                                <span class="btn-front">+ Add File</span>
+                            </button>
 
                             <button type="submit" class="popout-btn" ?disabled=${this._loading}>
                                 <span class="btn-edge"></span>
@@ -228,15 +296,15 @@ class EmunexEmulatorPage extends LitElement {
                         </form>
 
                         ${this._status
-                            ? html`
+                ? html`
                                   <div
                                       class="status-box ${this._statusType === "error"
-                                          ? "status-error"
-                                          : "status-success"}"
-                                      >${this._status}</div
-                                  >
+                        ? "status-error"
+                        : "status-success"}">
+                                      ${this._status}
+                                  </div>
                               `
-                            : ""}
+                : ""}
                     </div>
                 </div>
             </div>
@@ -254,6 +322,18 @@ class EmunexEmulatorPage extends LitElement {
 
     _removeSaveExt(t) {
         this._saveExtensions = this._saveExtensions.filter((ext) => ext !== t);
+    }
+
+    _addExtraFile() {
+        this._extraFiles = [...this._extraFiles, { file: null, windows_path: "", linux_path: "", macos_path: "" }];
+    }
+
+    _removeExtraFile(index) {
+        this._extraFiles = this._extraFiles.filter((_, i) => i !== index);
+    }
+
+    _updateExtraFile(index, field, value) {
+        this._extraFiles = this._extraFiles.map((f, i) => (i === index ? { ...f, [field]: value } : f));
     }
 
     _toggleConsole(name, checked) {
@@ -317,17 +397,67 @@ class EmunexEmulatorPage extends LitElement {
 
             const result = await response.json();
 
-            if (response.ok) {
-                this._status = `Success! Emulator ID: ${result.data}`;
-                this._statusType = "success";
-                form.reset();
-                this._saveExtensions = [];
-                this._selectedConsoles = [];
-                this._fileName = "";
-            } else {
+            if (!response.ok) {
                 this._status = `Error: ${result.error || "Registration failed"}`;
                 this._statusType = "error";
+                return;
             }
+
+            const emulatorId = typeof result.data === "object" ? result.data.id : result.data;
+
+            for (const entry of this._extraFiles) {
+                if (!entry.file) continue;
+
+                const signRes = await fetch(`/api/v1/emulators/${emulatorId}/extra-file/sign`, {
+                    method: "POST",
+                    headers: { Authorization: token, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        filename: entry.file.name,
+                        windows_path: entry.windows_path,
+                        linux_path: entry.linux_path,
+                        macos_path: entry.macos_path,
+                    }),
+                });
+
+                if (!signRes.ok) {
+                    const err = await signRes.json();
+                    this._status = `Extra file sign failed: ${err.error || signRes.statusText}`;
+                    this._statusType = "error";
+                    return;
+                }
+                const { data: signed } = await signRes.json();
+
+                const putRes = await fetch(signed.upload_url, {
+                    method: "PUT",
+                    body: entry.file,
+                    headers: { "Content-Type": "application/octet-stream" },
+                });
+
+                if (!putRes.ok) {
+                    this._status = `Direct S3 upload failed for ${entry.file.name}`;
+                    this._statusType = "error";
+                    return;
+                }
+
+                await fetch(`/api/v1/emulators/${emulatorId}/extra-file/confirm`, {
+                    method: "POST",
+                    headers: { Authorization: token, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        s3_path: signed.s3_path,
+                        windows_path: signed.windows_path,
+                        linux_path: signed.linux_path,
+                        macos_path: signed.macos_path,
+                    }),
+                });
+            }
+
+            this._status = `Success! Emulator ID: ${emulatorId}`;
+            this._statusType = "success";
+            form.reset();
+            this._saveExtensions = [];
+            this._selectedConsoles = [];
+            this._fileName = "";
+            this._extraFiles = [];
         } catch (err) {
             this._status = "A network error occurred.";
             this._statusType = "error";

@@ -1,5 +1,5 @@
 use chrono::{Duration, Utc};
-use rocket::{get, post, response::Redirect, serde::json::Json};
+use rocket::{get, post, response::Redirect};
 use serde::Deserialize;
 use tracing::error;
 use uuid::Uuid;
@@ -396,7 +396,7 @@ async fn handle_register(
         .await
     {
         error!("Failed to insert Discord user: {e}");
-        return error_redirect("Internal error — could not create account");
+        return error_redirect("Internal error - could not create account");
     }
 
     if let Err(e) = sqlx::query!(
