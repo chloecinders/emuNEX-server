@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT rom_path, zipped, zipped_entry FROM roms WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "rom_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "zipped",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 2,
+        "name": "zipped_entry",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "124a2d63acde9585d031e0b2ca6864fa72f62c0737cccdaa9818a36ad19797d9"
+}

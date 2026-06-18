@@ -1,0 +1,85 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, title, realname, '/covers_small/' || console || '/' || id || '/' || image_hash || '.webp' as \"image_path!\", console, category, region, release_year, serial, languages, 1::bigint as \"versions_count!\"\n               FROM roms\n               WHERE (category = $1 OR $1 IS NULL)\n               AND (console = $2 OR $2 IS NULL)\n               ORDER BY id DESC\n               LIMIT $3 OFFSET $4",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "realname",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "image_path!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "console",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "category",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "region",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "release_year",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "serial",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "languages",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "versions_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      null,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "6f6205d225b80b62c4ad223f6d907ad501f80b2cf0a12030904ebc45757ee8d5"
+}

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE emulators SET name = $1, consoles = $2, platform = $3, run_command = $4, binary_name = $5, save_path = $6, save_extensions = $7, input_config_file = $8, input_mapper = $9, zipped = $10, version = $11 WHERE id = $12",
+  "query": "UPDATE emulators SET name = $1, consoles = $2, platform = $3, run_command = $4, binary_name = $5, save_path = $6, save_extensions = $7, input_config_file = $8, input_mapper = $9, zipped = $10, version = $11, extra_files = $12 WHERE id = $13",
   "describe": {
     "columns": [],
     "parameters": {
@@ -16,10 +16,11 @@
         "Text",
         "Bool",
         "Varchar",
+        "Jsonb",
         "Int8"
       ]
     },
     "nullable": []
   },
-  "hash": "5d4f0d489de6d59595ef335b573deb3ab574772c27617b47e3030462801e1b5f"
+  "hash": "c316fe0e212c3a4e1cd24fcd0dbc60888345f25fe1065b0177e68396a906ec1a"
 }

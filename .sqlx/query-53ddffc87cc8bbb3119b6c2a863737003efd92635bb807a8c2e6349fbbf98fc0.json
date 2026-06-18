@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO emulators (id, name, consoles, platform, run_command, binary_name, save_path, save_extensions, binary_path, md5_hash, input_config_file, input_mapper, zipped, file_size, version, extra_files)\n         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Varchar",
+        "TextArray",
+        "Varchar",
+        "Text",
+        "Text",
+        "Text",
+        "TextArray",
+        "Text",
+        "Bpchar",
+        "Text",
+        "Text",
+        "Bool",
+        "Int8",
+        "Varchar",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "53ddffc87cc8bbb3119b6c2a863737003efd92635bb807a8c2e6349fbbf98fc0"
+}

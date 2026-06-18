@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, '/covers/' || r.console || '/' || r.id || '/' || r.image_hash || '.webp' as \"image_path!\", r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,\n             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as \"versions_count!\"\n           FROM roms r WHERE r.id = $1",
+  "query": "SELECT r.id, r.title, r.realname, r.console, r.region, r.category, r.serial, '/covers_small/' || r.console || '/' || r.id || '/' || r.image_hash || '.webp' as \"image_path!\", r.file_extension, r.file_size_bytes, r.md5_hash, r.release_year, r.created_at, r.languages,\n             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = r.title AND r2.console = r.console) as \"versions_count!\",\n             r.zipped,\n             r.zipped_entry,\n             r.multi_disc_disclaimer\n           FROM roms r WHERE r.id = ANY($1)",
   "describe": {
     "columns": [
       {
@@ -77,11 +77,26 @@
         "ordinal": 14,
         "name": "versions_count!",
         "type_info": "Int8"
+      },
+      {
+        "ordinal": 15,
+        "name": "zipped",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 16,
+        "name": "zipped_entry",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 17,
+        "name": "multi_disc_disclaimer",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "TextArray"
       ]
     },
     "nullable": [
@@ -99,8 +114,11 @@
       true,
       true,
       true,
-      null
+      null,
+      false,
+      true,
+      false
     ]
   },
-  "hash": "f3051ea51b15fb93ad5befd8ee26171e104ae38aa0339c87c3767356f6bc3455"
+  "hash": "44cc0b1310937b79726f9479b6a80920fc7697a1041b7e352671605f28770657"
 }

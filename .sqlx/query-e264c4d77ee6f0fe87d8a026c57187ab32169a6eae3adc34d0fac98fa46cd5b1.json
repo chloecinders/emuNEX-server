@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO roms (id, title, realname, console, category, region, serial, release_year, rom_path, image_hash, file_extension, md5_hash, file_size_bytes, languages, zipped, zipped_entry, multi_disc_disclaimer)\n         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)\n         ON CONFLICT (id) DO UPDATE SET\n            title = EXCLUDED.title,\n            realname = EXCLUDED.realname,\n            console = EXCLUDED.console,\n            category = EXCLUDED.category,\n            region = EXCLUDED.region,\n            serial = EXCLUDED.serial,\n            release_year = EXCLUDED.release_year,\n            rom_path = EXCLUDED.rom_path,\n            image_hash = EXCLUDED.image_hash,\n            file_extension = EXCLUDED.file_extension,\n            md5_hash = EXCLUDED.md5_hash,\n            file_size_bytes = EXCLUDED.file_size_bytes,\n            languages = EXCLUDED.languages,\n            zipped = EXCLUDED.zipped,\n            zipped_entry = EXCLUDED.zipped_entry,\n            multi_disc_disclaimer = EXCLUDED.multi_disc_disclaimer",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Text",
+        "Int4",
+        "Text",
+        "Text",
+        "Varchar",
+        "Bpchar",
+        "Int8",
+        "Text",
+        "Bool",
+        "Varchar",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e264c4d77ee6f0fe87d8a026c57187ab32169a6eae3adc34d0fac98fa46cd5b1"
+}

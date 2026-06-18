@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, title, realname, '/covers_small/' || console || '/' || id || '/' || image_hash || '.webp' as \"image_path!\", console, category, region, release_year, serial, languages, \"versions_count!\" FROM (\n             SELECT DISTINCT ON (console, title) id, title, realname, image_hash, console, category, region, release_year, serial, languages,\n             (SELECT COUNT(*) FROM roms r2 WHERE r2.title = roms.title AND r2.console = roms.console) as \"versions_count!\"\n             FROM roms\n             WHERE (\n                 title ILIKE '%' || $1 || '%'\n                 OR serial ILIKE $1 || '%'\n                 OR realname ILIKE '%' || $1 || '%'\n             )\n             AND (category = $2 OR $2 IS NULL)\n             AND (console = $3 OR $3 IS NULL)\n             ORDER BY console, title, region NULLS LAST, id DESC\n         ) sub\n         ORDER BY\n             CASE WHEN serial ILIKE $1 THEN 0 ELSE 1 END,\n             title ASC\n         LIMIT $4 OFFSET $5",
+  "query": "SELECT id, title, realname, '/covers_small/' || console || '/' || id || '/' || image_hash || '.webp' as \"image_path!\", console, category, region, release_year, serial, languages, 1::bigint as \"versions_count!\"\n               FROM roms\n               WHERE (\n                   title ILIKE '%' || $1 || '%'\n                   OR serial ILIKE $1 || '%'\n                   OR realname ILIKE '%' || $1 || '%'\n                   OR id ILIKE '%' || $1 || '%'\n               )\n               AND (category = $2 OR $2 IS NULL)\n               AND (console = $3 OR $3 IS NULL)\n               ORDER BY\n                   CASE WHEN id ILIKE $1 THEN 0 ELSE 1 END,\n                   id DESC\n               LIMIT $4 OFFSET $5",
   "describe": {
     "columns": [
       {
@@ -82,5 +82,5 @@
       null
     ]
   },
-  "hash": "e32b4b6ba83a7e4289b111aaaed698fa6fc5ad3617694335ba97f4bc73602e2a"
+  "hash": "48efa97a62c08165430a0085f78e82f65cbca857565d0070190fbaa8f11569e1"
 }
