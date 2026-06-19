@@ -884,7 +884,7 @@ dependencies = [
 
 [[package]]
 name = "emunex-server"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "argon2",
  "base64",

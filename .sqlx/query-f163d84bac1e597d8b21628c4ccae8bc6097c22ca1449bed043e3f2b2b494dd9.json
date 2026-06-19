@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id,\n            name,\n            consoles as \"consoles!\",\n            platform,\n            run_command,\n            binary_path,\n            binary_name,\n            save_path,\n            save_extensions as \"save_extensions!\",\n            md5_hash,\n            input_config_file,\n            input_mapper,\n            zipped as \"zipped!\",\n            file_size as \"file_size!\",\n            version,\n            extra_files as \"extra_files!\",\n            created_at\n        FROM emulators\n        ORDER BY consoles ASC, name ASC\n        ",
+  "query": "\n        SELECT\n            id,\n            name,\n            consoles as \"consoles!\",\n            platform,\n            run_command,\n            binary_path,\n            binary_name,\n            save_paths as \"save_paths!\",\n            save_extensions as \"save_extensions!\",\n            md5_hash,\n            input_config_file,\n            input_mapper,\n            zipped as \"zipped!\",\n            file_size as \"file_size!\",\n            version,\n            extra_files as \"extra_files!\",\n            created_at\n        FROM emulators\n        WHERE $1 ILIKE ANY(consoles) AND platform = $2\n        ORDER BY name ASC\n        ",
   "describe": {
     "columns": [
       {
@@ -40,8 +40,8 @@
       },
       {
         "ordinal": 7,
-        "name": "save_path",
-        "type_info": "Text"
+        "name": "save_paths!",
+        "type_info": "Jsonb"
       },
       {
         "ordinal": 8,
@@ -90,7 +90,10 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Text",
+        "Text"
+      ]
     },
     "nullable": [
       false,
@@ -100,7 +103,7 @@
       false,
       false,
       true,
-      true,
+      false,
       false,
       true,
       true,
@@ -112,5 +115,5 @@
       true
     ]
   },
-  "hash": "dbee23dc798d49533039b7fa0003ee5755fa7228157d5f346f1c6a9ed4bc56ea"
+  "hash": "f163d84bac1e597d8b21628c4ccae8bc6097c22ca1449bed043e3f2b2b494dd9"
 }

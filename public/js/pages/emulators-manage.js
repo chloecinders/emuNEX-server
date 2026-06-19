@@ -27,6 +27,7 @@ class EmunexEmulatorsManagePage extends LitElement {
         _editModalOpen: { type: Boolean, state: true },
         _editingEmulator: { type: Object, state: true },
         _editConsoles: { type: Array, state: true },
+        _editSavePaths: { type: Array, state: true },
         _editSaveExtensions: { type: Array, state: true },
         _editFileName: { type: String, state: true },
         _dragover: { type: Boolean, state: true },
@@ -104,6 +105,7 @@ class EmunexEmulatorsManagePage extends LitElement {
         this._editModalOpen = false;
         this._editingEmulator = null;
         this._editConsoles = [];
+        this._editSavePaths = [];
         this._editSaveExtensions = [];
         this._editFileName = "";
         this._dragover = false;
@@ -363,12 +365,31 @@ class EmunexEmulatorsManagePage extends LitElement {
                             </div>
 
                             <div class="form-group">
-                                <label>Save Path (optional)</label>
-                                <input
-                                    type="text"
-                                    id="edit-save-path"
-                                    .value=${this._editingEmulator.save_path || ""}
-                                    placeholder="/saves/$rom_name.sav" />
+                                <label>
+                                    Save Paths (press Enter to add, e.g.
+                                    <code>/saves/</code>
+                                    or
+                                    <code>/states/</code>
+                                    )
+                                </label>
+                                <div class="tag-system">
+                                    ${this._editSavePaths.map(
+                                        (t) => html`
+                                            <div class="tag">
+                                                ${t}
+                                                <span class="tag-remove" @click=${() => this._removeSavePath(t)}>
+                                                    ×
+                                                </span>
+                                            </div>
+                                        `,
+                                    )}
+                                    <div class="tag-input-wrapper">
+                                        <input
+                                            type="text"
+                                            placeholder="/saves/$rom_name.sav"
+                                            @keydown=${(e) => this._handleSavePathKeydown(e)} />
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="form-group">
@@ -502,34 +523,13 @@ class EmunexEmulatorsManagePage extends LitElement {
                                                         this._updateEditExtraFile(i, "newFile", e.target.files[0])} />
                                             </label>
                                         </div>
-                                        <div class="grid-2">
-                                            <div class="form-group">
-                                                <label>Windows Path</label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="C:\\Emu\\file.dll"
-                                                    .value=${f.windows_path}
-                                                    @input=${(e) =>
-                                                        this._updateEditExtraFile(i, "windows_path", e.target.value)} />
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Linux Path</label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="/usr/share/emu/file.so"
-                                                    .value=${f.linux_path}
-                                                    @input=${(e) =>
-                                                        this._updateEditExtraFile(i, "linux_path", e.target.value)} />
-                                            </div>
-                                        </div>
                                         <div class="form-group">
-                                            <label>macOS Path</label>
+                                            <label>Install Path</label>
                                             <input
                                                 type="text"
-                                                placeholder="/Applications/Emu.app/Contents/Resources/file"
-                                                .value=${f.macos_path}
-                                                @input=${(e) =>
-                                                    this._updateEditExtraFile(i, "macos_path", e.target.value)} />
+                                                placeholder="/opt/emu/bios.bin or C:\\Emu\\bios.bin"
+                                                .value=${f.path}
+                                                @input=${(e) => this._updateEditExtraFile(i, "path", e.target.value)} />
                                         </div>
                                     </div>
                                 `,
@@ -578,6 +578,19 @@ class EmunexEmulatorsManagePage extends LitElement {
         this._editSaveExtensions = this._editSaveExtensions.filter((ext) => ext !== t);
     }
 
+    _handleSavePathKeydown(e) {
+        if (e.key === "Enter" && e.target.value.trim()) {
+            e.preventDefault();
+            const val = e.target.value.trim();
+            if (!this._editSavePaths.includes(val)) this._editSavePaths = [...this._editSavePaths, val];
+            e.target.value = "";
+        }
+    }
+
+    _removeSavePath(t) {
+        this._editSavePaths = this._editSavePaths.filter((path) => path !== t);
+    }
+
     _toggleConsole(name, checked) {
         if (checked) {
             if (!this._editConsoles.includes(name)) this._editConsoles = [...this._editConsoles, name];
@@ -618,6 +631,9 @@ class EmunexEmulatorsManagePage extends LitElement {
     openEdit(emu) {
         this._editingEmulator = { ...emu };
         this._editConsoles = [...(emu.consoles || [])];
+        let paths = emu.save_paths;
+        if (typeof emu.save_path === "string") paths = [emu.save_path];
+        this._editSavePaths = Array.isArray(paths) ? [...paths] : [];
         this._editSaveExtensions = [...(emu.save_extensions || [])];
         this._editFileName = "";
         const rawExtra = Array.isArray(emu.extra_files)
@@ -627,9 +643,7 @@ class EmunexEmulatorsManagePage extends LitElement {
               : [];
         this._editExtraFiles = rawExtra.map((f) => ({
             s3_path: f.s3_path || "",
-            windows_path: f.windows_path || "",
-            linux_path: f.linux_path || "",
-            macos_path: f.macos_path || "",
+            path: f.path || f.windows_path || f.linux_path || f.macos_path || "",
             newFile: null,
         }));
         this._editModalOpen = true;
@@ -659,9 +673,7 @@ class EmunexEmulatorsManagePage extends LitElement {
             .filter((f) => f.s3_path && !f.newFile)
             .map((f) => ({
                 s3_path: f.s3_path,
-                windows_path: f.windows_path,
-                linux_path: f.linux_path,
-                macos_path: f.macos_path,
+                path: f.path,
             }));
 
         for (const f of this._editExtraFiles) {
@@ -672,9 +684,7 @@ class EmunexEmulatorsManagePage extends LitElement {
                 headers: { Authorization: token, "Content-Type": "application/json" },
                 body: JSON.stringify({
                     filename: f.newFile.name,
-                    windows_path: f.windows_path,
-                    linux_path: f.linux_path,
-                    macos_path: f.macos_path,
+                    path: f.path,
                 }),
             });
             if (!signRes.ok) {
@@ -699,9 +709,7 @@ class EmunexEmulatorsManagePage extends LitElement {
                 headers: { Authorization: token, "Content-Type": "application/json" },
                 body: JSON.stringify({
                     s3_path: signed.s3_path,
-                    windows_path: signed.windows_path,
-                    linux_path: signed.linux_path,
-                    macos_path: signed.macos_path,
+                    path: signed.path,
                 }),
             });
             if (!confirmRes.ok) {
@@ -717,7 +725,7 @@ class EmunexEmulatorsManagePage extends LitElement {
             platform: root.querySelector("#edit-platform").value,
             run_command: root.querySelector("#edit-command").value,
             binary_name: root.querySelector("#edit-binary-name").value,
-            save_path: root.querySelector("#edit-save-path").value,
+            save_paths: this._editSavePaths,
             save_extensions: this._editSaveExtensions,
             input_config_file: root.querySelector("#edit-input-config-file").value,
             input_mapper: root.querySelector("#edit-input-mapper").value || null,
@@ -759,10 +767,7 @@ class EmunexEmulatorsManagePage extends LitElement {
     }
 
     _addEditExtraFile() {
-        this._editExtraFiles = [
-            ...this._editExtraFiles,
-            { s3_path: "", newFile: null, windows_path: "", linux_path: "", macos_path: "" },
-        ];
+        this._editExtraFiles = [...this._editExtraFiles, { s3_path: "", newFile: null, path: "" }];
     }
 
     _removeEditExtraFile(index) {

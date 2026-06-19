@@ -31,7 +31,7 @@ pub struct V1EmulatorResponse {
     pub run_command: String,
     pub binary_path: String,
     pub binary_name: Option<String>,
-    pub save_path: Option<String>,
+    pub save_paths: serde_json::Value,
     pub save_extensions: Vec<String>,
     pub md5_hash: Option<String>,
     pub input_config_file: Option<String>,
@@ -62,7 +62,7 @@ pub async fn get_emulators_for_platform(
             run_command,
             binary_path,
             binary_name,
-            save_path,
+            save_paths as "save_paths!",
             save_extensions as "save_extensions!",
             md5_hash,
             input_config_file,
@@ -107,7 +107,7 @@ pub async fn get_all_emulators(
             run_command,
             binary_path,
             binary_name,
-            save_path,
+            save_paths as "save_paths!",
             save_extensions as "save_extensions!",
             md5_hash,
             input_config_file,
@@ -138,7 +138,7 @@ pub struct V1EmulatorUploadRequest<'r> {
     pub platform: String,
     pub run_command: String,
     pub binary_name: Option<String>,
-    pub save_path: String,
+    pub save_paths: Vec<String>,
     pub save_extensions: Vec<String>,
     pub binary_file: TempFile<'r>,
     pub input_config_file: Option<String>,
@@ -204,8 +204,11 @@ pub async fn emulator_upload(
 
     let id = next_id();
 
+    let save_paths_json =
+        serde_json::to_value(&data.save_paths).unwrap_or_else(|_| serde_json::json!([]));
+
     sqlx::query!(
-        "INSERT INTO emulators (id, name, consoles, platform, run_command, binary_name, save_path, save_extensions, binary_path, md5_hash, input_config_file, input_mapper, zipped, file_size, version, extra_files)
+        "INSERT INTO emulators (id, name, consoles, platform, run_command, binary_name, save_paths, save_extensions, binary_path, md5_hash, input_config_file, input_mapper, zipped, file_size, version, extra_files)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
         id,
         data.name,
@@ -213,7 +216,7 @@ pub async fn emulator_upload(
         data.platform,
         data.run_command,
         data.binary_name,
-        data.save_path,
+        save_paths_json,
         &data.save_extensions,
         binary_path,
         md5,
@@ -241,7 +244,7 @@ pub struct V1EmulatorUpdateRequest {
     pub platform: String,
     pub run_command: String,
     pub binary_name: Option<String>,
-    pub save_path: String,
+    pub save_paths: Vec<String>,
     pub save_extensions: Vec<String>,
     pub input_config_file: Option<String>,
     pub input_mapper: Option<String>,
@@ -262,15 +265,17 @@ pub async fn update_emulator(
 
     let data = data.into_inner();
     let extra_files_json = data.extra_files.unwrap_or_else(|| serde_json::json!([]));
+    let save_paths_json =
+        serde_json::to_value(&data.save_paths).unwrap_or_else(|_| serde_json::json!([]));
 
     sqlx::query!(
-        "UPDATE emulators SET name = $1, consoles = $2, platform = $3, run_command = $4, binary_name = $5, save_path = $6, save_extensions = $7, input_config_file = $8, input_mapper = $9, zipped = $10, version = $11, extra_files = $12 WHERE id = $13",
+        "UPDATE emulators SET name = $1, consoles = $2, platform = $3, run_command = $4, binary_name = $5, save_paths = $6, save_extensions = $7, input_config_file = $8, input_mapper = $9, zipped = $10, version = $11, extra_files = $12 WHERE id = $13",
         data.name,
         &data.consoles,
         data.platform,
         data.run_command,
         data.binary_name,
-        data.save_path,
+        save_paths_json,
         &data.save_extensions,
         data.input_config_file,
         data.input_mapper,
@@ -292,18 +297,14 @@ pub async fn update_emulator(
 #[derive(serde::Deserialize)]
 pub struct V1ExtraFileSignRequest {
     pub filename: String,
-    pub windows_path: String,
-    pub linux_path: String,
-    pub macos_path: String,
+    pub path: String,
 }
 
 #[derive(serde::Serialize)]
 pub struct V1ExtraFileSignResponse {
     pub upload_url: String,
     pub s3_path: String,
-    pub windows_path: String,
-    pub linux_path: String,
-    pub macos_path: String,
+    pub path: String,
 }
 
 impl V1ApiResponseTrait for V1ExtraFileSignResponse {}
@@ -356,18 +357,14 @@ pub async fn sign_extra_file_upload(
     Ok(V1ApiResponse(V1ExtraFileSignResponse {
         upload_url,
         s3_path,
-        windows_path: data.windows_path.clone(),
-        linux_path: data.linux_path.clone(),
-        macos_path: data.macos_path.clone(),
+        path: data.path.clone(),
     }))
 }
 
 #[derive(serde::Deserialize)]
 pub struct V1ExtraFileConfirmRequest {
     pub s3_path: String,
-    pub windows_path: String,
-    pub linux_path: String,
-    pub macos_path: String,
+    pub path: String,
 }
 
 #[post(
@@ -395,9 +392,7 @@ pub async fn confirm_extra_file(
 
     let new_entry = serde_json::json!({
         "s3_path": data.s3_path,
-        "windows_path": data.windows_path,
-        "linux_path": data.linux_path,
-        "macos_path": data.macos_path,
+        "path": data.path,
     });
 
     let mut extra_files: Vec<serde_json::Value> =

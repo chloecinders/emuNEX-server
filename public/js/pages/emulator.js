@@ -20,6 +20,7 @@ class EmunexEmulatorPage extends LitElement {
         _loading: { type: Boolean, state: true },
         _consoles: { type: Array, state: true },
         _selectedConsoles: { type: Array, state: true },
+        _savePaths: { type: Array, state: true },
         _saveExtensions: { type: Array, state: true },
         _fileName: { type: String, state: true },
         _dragover: { type: Boolean, state: true },
@@ -61,6 +62,7 @@ class EmunexEmulatorPage extends LitElement {
         this._loading = false;
         this._consoles = [];
         this._selectedConsoles = [];
+        this._savePaths = [];
         this._saveExtensions = [];
         this._fileName = "";
         this._dragover = false;
@@ -112,7 +114,7 @@ class EmunexEmulatorPage extends LitElement {
                                         class="checkbox-grid"
                                         style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 4px;">
                                         ${this._consoles.map(
-            (c) => html`
+                                            (c) => html`
                                                 <label
                                                     class="checkbox-row"
                                                     style="margin: 0; align-items: center; gap: 4px;">
@@ -120,11 +122,11 @@ class EmunexEmulatorPage extends LitElement {
                                                         type="checkbox"
                                                         .checked=${this._selectedConsoles.includes(c.name)}
                                                         @change=${(e) =>
-                    this._toggleConsole(c.name, e.target.checked)} />
+                                                            this._toggleConsole(c.name, e.target.checked)} />
                                                     ${c.name.toUpperCase()}
                                                 </label>
                                             `,
-        )}
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -149,8 +151,31 @@ class EmunexEmulatorPage extends LitElement {
                             </div>
 
                             <div class="form-group">
-                                <label for="save_path">Save Path (optional)</label>
-                                <input type="text" id="save_path" name="save_path" placeholder="/saves/$rom_name.sav" />
+                                <label>
+                                    Save Paths (press Enter to add, e.g.
+                                    <code>/saves/</code>
+                                    or
+                                    <code>/states/</code>
+                                    )
+                                </label>
+                                <div class="tag-system">
+                                    ${this._savePaths.map(
+                                        (t) => html`
+                                            <div class="tag">
+                                                ${t}
+                                                <span class="tag-remove" @click=${() => this._removeSavePath(t)}>
+                                                    ×
+                                                </span>
+                                            </div>
+                                        `,
+                                    )}
+                                    <div class="tag-input-wrapper">
+                                        <input
+                                            type="text"
+                                            placeholder="/saves/$rom_name.sav"
+                                            @keydown=${(e) => this._handleSavePathKeydown(e)} />
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="form-group">
@@ -177,13 +202,13 @@ class EmunexEmulatorPage extends LitElement {
                                 </label>
                                 <div class="tag-system">
                                     ${this._saveExtensions.map(
-            (t) => html`
+                                        (t) => html`
                                             <div class="tag">
                                                 ${t}
                                                 <span class="tag-remove" @click=${() => this._removeSaveExt(t)}>×</span>
                                             </div>
                                         `,
-        )}
+                                    )}
                                     <div class="tag-input-wrapper">
                                         <input type="text" placeholder=".sra" @keydown=${this._handleSaveExtKeydown} />
                                     </div>
@@ -223,7 +248,7 @@ class EmunexEmulatorPage extends LitElement {
                             <div class="section-hint" style="margin-top: var(--spacing-lg)">Additional Files</div>
 
                             ${this._extraFiles.map(
-            (f, i) => html`
+                                (f, i) => html`
                                     <div
                                         style="border: 1px solid var(--color-border); border-radius: 6px; padding: var(--spacing-md); margin-bottom: var(--spacing-md); position: relative; display: flex; flex-direction: column; gap: var(--spacing-md);">
                                         <button
@@ -246,7 +271,7 @@ class EmunexEmulatorPage extends LitElement {
                                                     type="file"
                                                     style="display:none"
                                                     @change=${(e) =>
-                    this._updateExtraFile(i, "file", e.target.files[0])} />
+                                                        this._updateExtraFile(i, "file", e.target.files[0])} />
                                             </label>
                                         </div>
                                         <div class="form-group">
@@ -256,7 +281,7 @@ class EmunexEmulatorPage extends LitElement {
                                                 placeholder="C:\\Program Files\\Emu\\file.dll"
                                                 .value=${f.windows_path}
                                                 @input=${(e) =>
-                    this._updateExtraFile(i, "windows_path", e.target.value)} />
+                                                    this._updateExtraFile(i, "windows_path", e.target.value)} />
                                         </div>
                                         <div class="form-group">
                                             <label>Linux Install Path</label>
@@ -265,7 +290,7 @@ class EmunexEmulatorPage extends LitElement {
                                                 placeholder="/usr/share/emu/file.so"
                                                 .value=${f.linux_path}
                                                 @input=${(e) =>
-                    this._updateExtraFile(i, "linux_path", e.target.value)} />
+                                                    this._updateExtraFile(i, "linux_path", e.target.value)} />
                                         </div>
                                         <div class="form-group">
                                             <label>macOS Install Path</label>
@@ -274,11 +299,11 @@ class EmunexEmulatorPage extends LitElement {
                                                 placeholder="/Applications/com.chloecinders.emuNEX/Contents/Resources/file"
                                                 .value=${f.macos_path}
                                                 @input=${(e) =>
-                    this._updateExtraFile(i, "macos_path", e.target.value)} />
+                                                    this._updateExtraFile(i, "macos_path", e.target.value)} />
                                         </div>
                                     </div>
                                 `,
-        )}
+                            )}
 
                             <button
                                 type="button"
@@ -296,15 +321,15 @@ class EmunexEmulatorPage extends LitElement {
                         </form>
 
                         ${this._status
-                ? html`
+                            ? html`
                                   <div
                                       class="status-box ${this._statusType === "error"
-                        ? "status-error"
-                        : "status-success"}">
+                                          ? "status-error"
+                                          : "status-success"}">
                                       ${this._status}
                                   </div>
                               `
-                : ""}
+                            : ""}
                     </div>
                 </div>
             </div>
@@ -322,6 +347,19 @@ class EmunexEmulatorPage extends LitElement {
 
     _removeSaveExt(t) {
         this._saveExtensions = this._saveExtensions.filter((ext) => ext !== t);
+    }
+
+    _handleSavePathKeydown(e) {
+        if (e.key === "Enter" && e.target.value.trim()) {
+            e.preventDefault();
+            const val = e.target.value.trim();
+            if (!this._savePaths.includes(val)) this._savePaths = [...this._savePaths, val];
+            e.target.value = "";
+        }
+    }
+
+    _removeSavePath(t) {
+        this._savePaths = this._savePaths.filter((path) => path !== t);
     }
 
     _addExtraFile() {
@@ -380,6 +418,9 @@ class EmunexEmulatorPage extends LitElement {
 
         formData.delete("save_extensions");
         this._saveExtensions.forEach((ext) => formData.append("save_extensions", ext));
+
+        formData.delete("save_paths");
+        this._savePaths.forEach((path) => formData.append("save_paths", path));
 
         formData.delete("consoles");
         this._selectedConsoles.forEach((c) => formData.append("consoles", c));
@@ -454,6 +495,7 @@ class EmunexEmulatorPage extends LitElement {
             this._status = `Success! Emulator ID: ${emulatorId}`;
             this._statusType = "success";
             form.reset();
+            this._savePaths = [];
             this._saveExtensions = [];
             this._selectedConsoles = [];
             this._fileName = "";
