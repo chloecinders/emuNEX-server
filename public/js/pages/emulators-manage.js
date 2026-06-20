@@ -219,28 +219,28 @@ class EmunexEmulatorsManagePage extends LitElement {
                                 </thead>
                                 <tbody>
                                     ${this._loading
-                                        ? html`
+                ? html`
                                               <tr><td colspan="5" style="text-align: center">Loading...</td></tr>
                                           `
-                                        : ""}
+                : ""}
                                     ${this._error
-                                        ? html`
+                ? html`
                                               <tr>
                                                   <td colspan="5" style="text-align: center; color: var(--color-error)">
                                                       ${this._error}
                                                   </td>
                                               </tr>
                                           `
-                                        : ""}
+                : ""}
                                     ${!this._loading && !this._error && this._filtered.length === 0
-                                        ? html`
+                ? html`
                                               <tr>
                                                   <td colspan="5" style="text-align: center">No emulators found.</td>
                                               </tr>
                                           `
-                                        : ""}
+                : ""}
                                     ${this._filtered.map(
-                                        (emu) => html`
+                    (emu) => html`
                                             <tr>
                                                 <td
                                                     style="font-family: monospace; font-weight: 700; color: var(--color-text-muted);">
@@ -270,21 +270,21 @@ class EmunexEmulatorsManagePage extends LitElement {
                                                 </td>
                                             </tr>
                                         `,
-                                    )}
+                )}
                                 </tbody>
                             </table>
                         </div>
 
                         ${this._status
-                            ? html`
+                ? html`
                                   <div
                                       class="status-box ${this._statusType === "error"
-                                          ? "status-error"
-                                          : "status-success"}">
+                        ? "status-error"
+                        : "status-success"}">
                                       ${this._status}
                                   </div>
                               `
-                            : ""}
+                : ""}
                     </div>
                 </div>
             </div>
@@ -321,7 +321,7 @@ class EmunexEmulatorsManagePage extends LitElement {
                                         class="checkbox-grid"
                                         style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 4px;">
                                         ${this._consoles.map(
-                                            (c) => html`
+            (c) => html`
                                                 <label
                                                     class="checkbox-row"
                                                     style="margin: 0; align-items: center; gap: 4px;">
@@ -329,11 +329,11 @@ class EmunexEmulatorsManagePage extends LitElement {
                                                         type="checkbox"
                                                         .checked=${this._editConsoles.includes(c.name)}
                                                         @change=${(e) =>
-                                                            this._toggleConsole(c.name, e.target.checked)} />
+                    this._toggleConsole(c.name, e.target.checked)} />
                                                     ${c.name.toUpperCase()}
                                                 </label>
                                             `,
-                                        )}
+        )}
                                     </div>
                                 </div>
                                 <div class="form-group">
@@ -374,7 +374,7 @@ class EmunexEmulatorsManagePage extends LitElement {
                                 </label>
                                 <div class="tag-system">
                                     ${this._editSavePaths.map(
-                                        (t) => html`
+            (t) => html`
                                             <div class="tag">
                                                 ${t}
                                                 <span class="tag-remove" @click=${() => this._removeSavePath(t)}>
@@ -382,7 +382,7 @@ class EmunexEmulatorsManagePage extends LitElement {
                                                 </span>
                                             </div>
                                         `,
-                                    )}
+        )}
                                     <div class="tag-input-wrapper">
                                         <input
                                             type="text"
@@ -420,13 +420,13 @@ class EmunexEmulatorsManagePage extends LitElement {
                                 </label>
                                 <div class="tag-system">
                                     ${this._editSaveExtensions.map(
-                                        (t) => html`
+            (t) => html`
                                             <div class="tag">
                                                 ${t}
                                                 <span class="tag-remove" @click=${() => this._removeSaveExt(t)}>×</span>
                                             </div>
                                         `,
-                                    )}
+        )}
                                     <div class="tag-input-wrapper">
                                         <input
                                             type="text"
@@ -463,26 +463,9 @@ class EmunexEmulatorsManagePage extends LitElement {
                             </div>
 
                             <div class="section-hint" style="margin-top: var(--spacing-md)">Additional Files</div>
-                            <p style="font-size: 0.8rem; color: var(--color-text-muted); margin: 0 0 var(--spacing-md)">
-                                Extra files downloaded and installed to OS-specific paths on the client.
-                                <br />
-                                <strong style="color: var(--color-text)">Supported Replacements:</strong>
-                                <code>$emu_dir</code>
-                                ,
-                                <code>$data_dir</code>
-                                ,
-                                <code>$temp_dir</code>
-                                ,
-                                <code>$save_dir</code>
-                                ,
-                                <code>$bin</code>
-                                ,
-                                <code>%ENV_VAR%</code>
-                                .
-                            </p>
 
                             ${this._editExtraFiles.map(
-                                (f, i) => html`
+            (f, i) => html`
                                     <div
                                         style="border: 1px solid var(--color-border); border-radius: 6px; padding: var(--spacing-md); margin-bottom: var(--spacing-sm); position: relative;">
                                         <button
@@ -490,27 +473,27 @@ class EmunexEmulatorsManagePage extends LitElement {
                                             style="position: absolute; top: 6px; right: 8px; background: none; border: none; cursor: pointer; color: var(--color-error); font-size: 1rem; line-height: 1;"
                                             @click=${() => this._removeEditExtraFile(i)}
                                             title="Remove">
-                                            ✕
+                                            x
                                         </button>
                                         <div class="form-group">
                                             <label>${f.s3_path ? "File (replace to re-upload)" : "File"}</label>
                                             ${f.s3_path
-                                                ? html`
+                    ? html`
                                                       <div
                                                           style="font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: 4px; font-family: monospace;">
                                                           ${f.s3_path.split("/").pop()}
                                                       </div>
                                                   `
-                                                : ""}
+                    : ""}
                                             <label
                                                 style="display: flex; align-items: center; gap: var(--spacing-sm); cursor: pointer; border: 1px solid var(--color-border); border-radius: 4px; padding: 8px 10px; background: var(--color-input-bg);">
                                                 <span
                                                     style="font-size: 0.85rem; color: var(--color-text-muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                                     ${f.newFile
-                                                        ? f.newFile.name
-                                                        : f.s3_path
-                                                          ? "Click to replace…"
-                                                          : "Click to choose file…"}
+                    ? f.newFile.name
+                    : f.s3_path
+                        ? "Click to replace…"
+                        : "Click to choose file…"}
                                                 </span>
                                                 <span
                                                     style="font-size: 0.75rem; padding: 2px 8px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px;">
@@ -520,7 +503,7 @@ class EmunexEmulatorsManagePage extends LitElement {
                                                     type="file"
                                                     style="display:none"
                                                     @change=${(e) =>
-                                                        this._updateEditExtraFile(i, "newFile", e.target.files[0])} />
+                    this._updateEditExtraFile(i, "newFile", e.target.files[0])} />
                                             </label>
                                         </div>
                                         <div class="form-group">
@@ -533,7 +516,7 @@ class EmunexEmulatorsManagePage extends LitElement {
                                         </div>
                                     </div>
                                 `,
-                            )}
+        )}
 
                             <button
                                 type="button"
@@ -639,8 +622,8 @@ class EmunexEmulatorsManagePage extends LitElement {
         const rawExtra = Array.isArray(emu.extra_files)
             ? emu.extra_files
             : typeof emu.extra_files === "string"
-              ? JSON.parse(emu.extra_files || "[]")
-              : [];
+                ? JSON.parse(emu.extra_files || "[]")
+                : [];
         this._editExtraFiles = rawExtra.map((f) => ({
             s3_path: f.s3_path || "",
             path: f.path || f.windows_path || f.linux_path || f.macos_path || "",
