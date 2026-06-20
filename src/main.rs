@@ -14,6 +14,11 @@ pub static CONFIG: AutoOnceLock<Config> = AutoOnceLock::new();
 pub static SQL: AutoOnceLock<PgPool> = AutoOnceLock::new();
 pub static S3: AutoOnceLock<Box<Bucket>> = AutoOnceLock::new();
 
+#[rocket::options("/<_..>")]
+pub fn options_all() -> rocket::http::Status {
+    rocket::http::Status::NoContent
+}
+
 #[launch]
 async fn rocket() -> _ {
     let mut config_file = File::open("./Config.toml")
@@ -120,10 +125,12 @@ async fn rocket() -> _ {
     rocket::build()
         .attach(Template::fairing())
         .attach(RateLimitFairing::new())
+        .attach(crate::utils::cors::CorsFairing)
         .mount("/public", FileServer::from("./public"))
         .mount(
             "/",
             routes![
+                options_all,
                 routes::index::index,
                 routes::dev::dev,
                 routes::dev::update_server,

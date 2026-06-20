@@ -7,6 +7,7 @@ pub struct S3Config {
     pub access_key: String,
     pub secret_key: String,
     pub region: String,
+    pub signed_domain: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]

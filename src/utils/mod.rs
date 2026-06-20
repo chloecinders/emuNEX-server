@@ -4,6 +4,7 @@ pub use config::Config;
 mod auto_once;
 pub use auto_once::AutoOnceLock;
 
+pub mod cors;
 pub mod id;
 pub mod rate_limit;
 pub mod s3;
