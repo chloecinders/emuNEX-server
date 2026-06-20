@@ -1,6 +1,22 @@
 use rocket::http::{Header, Status};
-use rocket::response::Responder;
+use rocket::response::{Redirect, Responder};
 use rocket::{Request, Response, get, options, response};
+
+pub enum StorageResponse {
+    Redirect(Redirect),
+    Data(Vec<u8>),
+}
+
+impl<'r> Responder<'r, 'static> for StorageResponse {
+    fn respond_to(self, req: &'r Request<'_>) -> response::Result<'static> {
+        match self {
+            StorageResponse::Redirect(r) => r.respond_to(req),
+            StorageResponse::Data(d) => Response::build()
+                .sized_body(d.len(), std::io::Cursor::new(d))
+                .ok(),
+        }
+    }
+}
 
 #[options("/storage/<_file..>")]
 pub async fn storage_options<'r>(_file: std::path::PathBuf) -> CorsResponse {
@@ -8,7 +24,7 @@ pub async fn storage_options<'r>(_file: std::path::PathBuf) -> CorsResponse {
 }
 
 #[get("/storage/<file..>")]
-pub async fn storage(file: std::path::PathBuf) -> Result<Vec<u8>, Status> {
+pub async fn storage(file: std::path::PathBuf) -> Result<StorageResponse, Status> {
     let display_path = file.display().to_string().replace("\\", "/");
     let key = format!("/{}", display_path);
 
@@ -20,6 +36,16 @@ pub async fn storage(file: std::path::PathBuf) -> Result<Vec<u8>, Status> {
     let is_large_cover = key.starts_with("/covers/");
     let is_icon = key.starts_with("/icons/");
     let is_avatar = key.starts_with("/avatars/");
+
+    let is_image = is_small_cover || is_large_cover || is_icon || is_avatar;
+
+    if !is_image {
+        if let Ok(presigned) = crate::utils::s3::presign_get_url(&key, 3600).await {
+            return Ok(StorageResponse::Redirect(Redirect::to(presigned)));
+        } else {
+            return Err(Status::InternalServerError);
+        }
+    }
 
     let extensions = [".png", ".webp", ".jpg", ".jpeg"];
     let mut current_extension = None;
@@ -35,7 +61,7 @@ pub async fn storage(file: std::path::PathBuf) -> Result<Vec<u8>, Status> {
     }
 
     if let Ok(data) = crate::utils::s3::download_object(&key).await {
-        return Ok(data);
+        return Ok(StorageResponse::Data(data));
     }
 
     let base_key = if is_small_cover {
@@ -80,7 +106,7 @@ pub async fn storage(file: std::path::PathBuf) -> Result<Vec<u8>, Status> {
                 if processed.write_to(&mut buf, format).is_ok() {
                     let raw = buf.into_inner();
                     let _ = crate::utils::s3::upload_object(&key, &raw).await;
-                    return Ok(raw);
+                    return Ok(StorageResponse::Data(raw));
                 }
             }
         }

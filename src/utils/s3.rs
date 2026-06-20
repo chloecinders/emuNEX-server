@@ -72,6 +72,18 @@ pub async fn presign_put_url(key: &str, expiry_secs: u32) -> Result<String, Stri
         })
 }
 
+pub async fn presign_get_url(key: &str, expiry_secs: u32) -> Result<String, String> {
+    let key = key.strip_prefix('/').unwrap_or(key);
+    let bucket = &*S3;
+    bucket
+        .presign_get(key, expiry_secs, None)
+        .await
+        .map_err(|e| {
+            error!("S3 presign_get error for key {}: {:?}", key, e);
+            format!("S3 presign error: {e}")
+        })
+}
+
 // pub async fn list_objects_shallow(prefix: &str) -> Result<Vec<String>, String> {
 //     let prefix = prefix.strip_prefix('/').unwrap_or(prefix);
 //     let bucket = &*S3;
