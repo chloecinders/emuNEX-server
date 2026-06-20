@@ -11,6 +11,7 @@ import {
     uploadZoneStyles,
 } from "../components/shared-styles.js";
 import "../theme-manager.js";
+import "../libs/spark-md5.min.js";
 
 class EmunexRomPage extends LitElement {
     static properties = {
@@ -205,7 +206,7 @@ class EmunexRomPage extends LitElement {
                 const notes = typeof dat === "string" ? "" : dat.notes;
                 this._datNotesData[name] = notes || "";
             });
-        } catch {}
+        } catch { }
     }
 
     render() {
@@ -256,10 +257,10 @@ class EmunexRomPage extends LitElement {
                                         <select id="console" name="console" required>
                                             <option value="">select console</option>
                                             ${this._consoles.map(
-                                                (c) => html`
+            (c) => html`
                                                     <option value=${c.name}>${c.name.toUpperCase()}</option>
                                                 `,
-                                            )}
+        )}
                                         </select>
                                     </div>
                                     <div class="form-group">
@@ -344,7 +345,7 @@ class EmunexRomPage extends LitElement {
                                 </div>
 
                                 ${this._zipped
-                                    ? html`
+                ? html`
                                           <div class="form-group">
                                               <label for="zipped_entry">
                                                   Starting ROM Entry File (inside ZIP, e.g. game.cue)
@@ -359,18 +360,18 @@ class EmunexRomPage extends LitElement {
                                                   required />
                                           </div>
                                       `
-                                    : ""}
+                : ""}
 
                                 <div class="form-group">
                                     <label>Cover Image</label>
                                     <div style="display: flex; gap: var(--spacing-md); align-items: start;">
                                         ${this._previewImageUrl
-                                            ? html`
+                ? html`
                                                   <img
                                                       src=${this._previewImageUrl}
                                                       style="width: 100px; height: 140px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--color-border); flex-shrink: 0;" />
                                               `
-                                            : ""}
+                : ""}
                                         <label
                                             class="upload-zone ${this._dragoverImage ? "dragover" : ""}"
                                             style="flex: 1; min-height: 140px; margin: 0;"
@@ -447,10 +448,10 @@ class EmunexRomPage extends LitElement {
                                     <select id="noIntroDatPicker" @change=${this._handleDatChange}>
                                         <option value="">- select a dat -</option>
                                         ${this._dats.map(
-                                            (dat) => html`
+                    (dat) => html`
                                                 <option value="${dat.name}">${dat.name}</option>
                                             `,
-                                        )}
+                )}
                                     </select>
                                 </div>
 
@@ -464,15 +465,15 @@ class EmunexRomPage extends LitElement {
 
                                 <div class="nointro-game-list">
                                     ${!this._currentDat
-                                        ? html`
+                ? html`
                                               <div class="nointro-empty">Select a platform to browse games</div>
                                           `
-                                        : this._noIntroGames.length === 0
-                                          ? html`
+                : this._noIntroGames.length === 0
+                    ? html`
                                                 <div class="nointro-empty">No games found / Searching…</div>
                                             `
-                                          : this._noIntroGames.map(
-                                                (g, idx) => html`
+                    : this._noIntroGames.map(
+                        (g, idx) => html`
                                                     <div class="nointro-game-row">
                                                         <span class="nointro-game-name" title="${g.name || "Unknown"}">
                                                             ${g.name || "Unknown"}
@@ -491,7 +492,7 @@ class EmunexRomPage extends LitElement {
                                                         </button>
                                                     </div>
                                                 `,
-                                            )}
+                    )}
                                 </div>
 
                                 <div class="form-group" style="margin-top: var(--spacing-md)">
@@ -505,25 +506,25 @@ class EmunexRomPage extends LitElement {
                                 </div>
 
                                 ${this._noIntroStatus
-                                    ? html`
+                ? html`
                                           <div class="status-box status-success" style="display: block">
                                               ${this._noIntroStatus}
                                           </div>
                                       `
-                                    : ""}
+                : ""}
                             </div>
                         </div>
 
                         ${this._status
-                            ? html`
+                ? html`
                                   <div
                                       class="status-box ${this._statusType === "error"
-                                          ? "status-error"
-                                          : "status-success"}">
+                        ? "status-error"
+                        : "status-success"}">
                                       ${this._status}
                                   </div>
                               `
-                            : ""}
+                : ""}
                     </div>
                 </div>
             </div>
@@ -610,6 +611,63 @@ class EmunexRomPage extends LitElement {
 
         try {
             const token = (await cookieStore.get("token"))?.value;
+
+            const romFile = formData.get("rom_file");
+            if (!romFile || !romFile.size) throw new Error("ROM file is required");
+
+            this._status = "Computing MD5... (This may take a moment for large games)";
+            const md5 = await new Promise((resolve, reject) => {
+                const chunkSize = 2097152;
+                const chunks = Math.ceil(romFile.size / chunkSize);
+                let currentChunk = 0;
+                const spark = new window.SparkMD5.ArrayBuffer();
+                const fileReader = new FileReader();
+                fileReader.onload = (e) => {
+                    spark.append(e.target.result);
+                    currentChunk++;
+                    if (currentChunk < chunks) loadNext();
+                    else resolve(spark.end());
+                };
+                fileReader.onerror = () => reject("File reading failed");
+                const loadNext = () => {
+                    const start = currentChunk * chunkSize;
+                    const end = start + chunkSize >= romFile.size ? romFile.size : start + chunkSize;
+                    fileReader.readAsArrayBuffer(romFile.slice(start, end));
+                };
+                loadNext();
+            });
+
+            this._status = "Requesting secure upload URL...";
+            let fileExt = romFile.name.split('.').pop().toLowerCase() || "bin";
+            if (this._zipped) fileExt = "zip";
+
+            const signRes = await fetch("/api/v1/roms/sign", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: token },
+                body: JSON.stringify({
+                    console: formData.get("console"),
+                    md5_hash: md5,
+                    file_extension: fileExt
+                })
+            });
+            const signJson = await signRes.json();
+            if (!signRes.ok) throw new Error(signJson.error || "Failed to sign upload URL");
+
+            this._status = "Uploading ROM directly to S3...";
+            const putRes = await fetch(signJson.data.upload_url, {
+                method: "PUT",
+                body: romFile,
+                headers: { "Content-Type": "application/octet-stream" }
+            });
+            if (!putRes.ok) throw new Error("S3 upload failed");
+
+            this._status = "Finalizing upload with server...";
+
+            formData.delete("rom_file");
+            formData.set("md5_hash", md5);
+            formData.set("file_size_bytes", romFile.size.toString());
+            formData.set("file_extension", fileExt);
+
             const response = await fetch("/api/v1/roms/upload", {
                 method: "POST",
                 body: formData,
@@ -630,7 +688,7 @@ class EmunexRomPage extends LitElement {
                 this._statusType = "error";
             }
         } catch (err) {
-            this._status = "A network error occurred.";
+            this._status = err.message || "A network error occurred.";
             this._statusType = "error";
         } finally {
             this._loading = false;

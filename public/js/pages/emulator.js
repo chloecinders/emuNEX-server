@@ -12,6 +12,7 @@ import {
     uploadZoneStyles,
 } from "../components/shared-styles.js";
 import "../theme-manager.js";
+import "../libs/spark-md5.min.js";
 
 class EmunexEmulatorPage extends LitElement {
     static properties = {
@@ -412,6 +413,62 @@ class EmunexEmulatorPage extends LitElement {
 
         try {
             const token = (await cookieStore.get("token"))?.value;
+            
+            const binaryFile = formData.get("binary_file");
+            if (!binaryFile || !binaryFile.size) throw new Error("Binary file is required");
+
+            this._status = "Computing MD5... (This may take a moment for large binaries)";
+            const md5 = await new Promise((resolve, reject) => {
+                const chunkSize = 2097152;
+                const chunks = Math.ceil(binaryFile.size / chunkSize);
+                let currentChunk = 0;
+                const spark = new window.SparkMD5.ArrayBuffer();
+                const fileReader = new FileReader();
+                fileReader.onload = (e) => {
+                    spark.append(e.target.result);
+                    currentChunk++;
+                    if (currentChunk < chunks) loadNext();
+                    else resolve(spark.end());
+                };
+                fileReader.onerror = () => reject("File reading failed");
+                const loadNext = () => {
+                    const start = currentChunk * chunkSize;
+                    const end = start + chunkSize >= binaryFile.size ? binaryFile.size : start + chunkSize;
+                    fileReader.readAsArrayBuffer(binaryFile.slice(start, end));
+                };
+                loadNext();
+            });
+
+            this._status = "Requesting secure upload URL...";
+            let fileExt = binaryFile.name.split('.').pop().toLowerCase() || "bin";
+
+            const signRes = await fetch("/api/v1/emulators/sign", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: token },
+                body: JSON.stringify({
+                    platform: formData.get("platform"),
+                    consoles: this._selectedConsoles,
+                    name: formData.get("name"),
+                    file_extension: fileExt
+                })
+            });
+            const signJson = await signRes.json();
+            if (!signRes.ok) throw new Error(signJson.error || "Failed to sign upload URL");
+
+            this._status = "Uploading binary directly to S3...";
+            const putRes = await fetch(signJson.data.upload_url, {
+                method: "PUT",
+                body: binaryFile,
+                headers: { "Content-Type": "application/octet-stream" }
+            });
+            if (!putRes.ok) throw new Error("S3 upload failed");
+
+            this._status = "Finalizing emulator registration...";
+            formData.delete("binary_file");
+            formData.set("md5_hash", md5);
+            formData.set("file_size_bytes", binaryFile.size.toString());
+            formData.set("file_extension", fileExt);
+
             const response = await fetch("/api/v1/emulators/upload", {
                 method: "POST",
                 body: formData,
@@ -479,7 +536,7 @@ class EmunexEmulatorPage extends LitElement {
             this._fileName = "";
             this._extraFiles = [];
         } catch (err) {
-            this._status = "A network error occurred.";
+            this._status = err.message || "A network error occurred.";
             this._statusType = "error";
         } finally {
             this._loading = false;

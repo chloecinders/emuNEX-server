@@ -1,7 +1,6 @@
 use rocket::{
     delete,
     form::{Form, FromForm},
-    fs::TempFile,
     get, post, put,
     serde::json::Json,
 };
@@ -15,11 +14,7 @@ use crate::{
         api_response::V1ApiResponseTrait,
         v1::guards::{AuthenticatedUser, UserRole},
     },
-    utils::{
-        id::Id,
-        s3::{compute_md5, presign_put_url, upload_object},
-        snowflake::next_id,
-    },
+    utils::{id::Id, s3::presign_put_url, snowflake::next_id},
 };
 
 #[derive(Serialize, sqlx::FromRow)]
@@ -131,8 +126,48 @@ pub async fn get_all_emulators(
     Ok(V1ApiResponse(emulators))
 }
 
+#[derive(serde::Deserialize)]
+pub struct V1EmulatorSignRequest {
+    pub platform: String,
+    pub consoles: Vec<String>,
+    pub name: String,
+    pub file_extension: String,
+}
+
+#[derive(serde::Serialize)]
+pub struct V1EmulatorSignResponse {
+    pub upload_url: String,
+    pub binary_path: String,
+}
+impl V1ApiResponseTrait for V1EmulatorSignResponse {}
+
+#[post("/api/v1/emulators/sign", format = "json", data = "<data>")]
+pub async fn sign_emulator_upload(
+    data: Json<V1EmulatorSignRequest>,
+    user: AuthenticatedUser,
+) -> V1ApiResponseType<V1EmulatorSignResponse> {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
+        return Err(V1ApiError::MissingPermissions);
+    }
+    let binary_path = format!(
+        "/emulators/{}/{}/{}.{}",
+        data.platform.to_lowercase(),
+        data.consoles.join("_").to_lowercase().replace(" ", "_"),
+        data.name.to_lowercase().replace(" ", "_"),
+        data.file_extension.to_lowercase()
+    );
+    let upload_url = presign_put_url(&binary_path, 900).await.map_err(|e| {
+        error!("Failed to presign Emulator upload URL: {}", e);
+        V1ApiError::DatabaseError
+    })?;
+    Ok(V1ApiResponse(V1EmulatorSignResponse {
+        upload_url,
+        binary_path,
+    }))
+}
+
 #[derive(FromForm)]
-pub struct V1EmulatorUploadRequest<'r> {
+pub struct V1EmulatorUploadRequest {
     pub name: String,
     pub consoles: Vec<String>,
     pub platform: String,
@@ -140,7 +175,9 @@ pub struct V1EmulatorUploadRequest<'r> {
     pub binary_name: Option<String>,
     pub save_paths: Vec<String>,
     pub save_extensions: Vec<String>,
-    pub binary_file: TempFile<'r>,
+    pub file_size_bytes: i64,
+    pub file_extension: String,
+    pub md5_hash: String,
     pub input_config_file: Option<String>,
     pub input_mapper: Option<String>,
     pub zipped: bool,
@@ -153,54 +190,20 @@ pub struct V1EmulatorUploadRequest<'r> {
     data = "<data>"
 )]
 pub async fn emulator_upload(
-    data: Form<V1EmulatorUploadRequest<'_>>,
+    data: Form<V1EmulatorUploadRequest>,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<Id> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
         return Err(V1ApiError::MissingPermissions);
     }
 
-    let bin_ext = data
-        .binary_file
-        .raw_name()
-        .and_then(|n| {
-            let raw = n.dangerous_unsafe_unsanitized_raw();
-            let filename = raw
-                .to_string()
-                .replace('\\', "/")
-                .split('/')
-                .last()
-                .unwrap_or("")
-                .to_string();
-            filename.rsplit_once('.').map(|(_, ext)| ext.to_lowercase())
-        })
-        .unwrap_or_else(|| "bin".to_string());
-
-    let bin_bytes = tokio::fs::read(data.binary_file.path().unwrap())
-        .await
-        .map_err(|e| {
-            error!("Failed to read emulator binary from temp storage: {:?}", e);
-            V1ApiError::DatabaseError
-        })?;
-
-    let file_size = bin_bytes.len() as i64;
-    let md5 = compute_md5(&bin_bytes);
-
     let binary_path = format!(
         "/emulators/{}/{}/{}.{}",
         data.platform.to_lowercase(),
         data.consoles.join("_").to_lowercase().replace(" ", "_"),
         data.name.to_lowercase().replace(" ", "_"),
-        bin_ext
+        data.file_extension.to_lowercase()
     );
-
-    upload_object(&binary_path, &bin_bytes).await.map_err(|e| {
-        error!(
-            "Failed to upload emulator binary to '{}': {:?}",
-            binary_path, e
-        );
-        V1ApiError::DatabaseError
-    })?;
 
     let id = next_id();
 
@@ -219,12 +222,12 @@ pub async fn emulator_upload(
         save_paths_json,
         &data.save_extensions,
         binary_path,
-        md5,
-        data.input_config_file,
-        data.input_mapper,
+        data.md5_hash.clone(),
+        data.input_config_file.clone(),
+        data.input_mapper.clone(),
         data.zipped,
-        file_size,
-        data.version,
+        data.file_size_bytes,
+        data.version.clone(),
         serde_json::json!([])
     )
     .execute(&*SQL)
@@ -414,9 +417,54 @@ pub async fn confirm_extra_file(
     Ok(V1ApiResponse(new_entry))
 }
 
+#[derive(serde::Deserialize)]
+pub struct V1EmulatorBinarySignRequest {
+    pub file_extension: String,
+}
+
+#[post("/api/v1/emulators/<id>/binary/sign", format = "json", data = "<data>")]
+pub async fn sign_emulator_binary_update(
+    id: i64,
+    data: Json<V1EmulatorBinarySignRequest>,
+    user: AuthenticatedUser,
+) -> V1ApiResponseType<V1EmulatorSignResponse> {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
+        return Err(V1ApiError::MissingPermissions);
+    }
+    let emu = sqlx::query!(
+        "SELECT platform, consoles, name FROM emulators WHERE id = $1",
+        id
+    )
+    .fetch_optional(&*SQL)
+    .await
+    .map_err(|_| V1ApiError::InternalError)?
+    .ok_or(V1ApiError::EmulatorNotFound)?;
+    let binary_path = format!(
+        "/emulators/{}/{}/{}.{}",
+        emu.platform.to_lowercase(),
+        emu.consoles
+            .unwrap_or_default()
+            .join("_")
+            .to_lowercase()
+            .replace(" ", "_"),
+        emu.name.to_lowercase().replace(" ", "_"),
+        data.file_extension.to_lowercase()
+    );
+    let upload_url = presign_put_url(&binary_path, 900).await.map_err(|e| {
+        error!("Failed to presign emulator binary update URL: {}", e);
+        V1ApiError::DatabaseError
+    })?;
+    Ok(V1ApiResponse(V1EmulatorSignResponse {
+        upload_url,
+        binary_path,
+    }))
+}
+
 #[derive(FromForm)]
-pub struct V1BinaryUpdate<'r> {
-    binary: TempFile<'r>,
+pub struct V1BinaryUpdate {
+    pub file_extension: String,
+    pub file_size_bytes: i64,
+    pub md5_hash: String,
 }
 
 #[post(
@@ -426,43 +474,46 @@ pub struct V1BinaryUpdate<'r> {
 )]
 pub async fn update_emulator_binary(
     id: i64,
-    data: Form<V1BinaryUpdate<'_>>,
+    data: Form<V1BinaryUpdate>,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<()> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
         return Err(V1ApiError::MissingPermissions);
     }
 
-    let emu = sqlx::query!("SELECT binary_path FROM emulators WHERE id = $1", id)
-        .fetch_optional(&*SQL)
-        .await
-        .map_err(|e| {
-            error!("{:?}", e);
-            V1ApiError::DatabaseError
-        })?
-        .ok_or(V1ApiError::EmulatorNotFound)?;
+    let emu = sqlx::query!(
+        "SELECT platform, consoles, name, binary_path FROM emulators WHERE id = $1",
+        id
+    )
+    .fetch_optional(&*SQL)
+    .await
+    .map_err(|e| {
+        error!("{:?}", e);
+        V1ApiError::DatabaseError
+    })?
+    .ok_or(V1ApiError::EmulatorNotFound)?;
 
-    let bin_bytes = tokio::fs::read(data.binary.path().unwrap())
-        .await
-        .map_err(|e| {
-            error!("{:?}", e);
-            V1ApiError::DatabaseError
-        })?;
+    let new_binary_path = format!(
+        "/emulators/{}/{}/{}.{}",
+        emu.platform.to_lowercase(),
+        emu.consoles
+            .unwrap_or_default()
+            .join("_")
+            .to_lowercase()
+            .replace(" ", "_"),
+        emu.name.to_lowercase().replace(" ", "_"),
+        data.file_extension.to_lowercase()
+    );
 
-    let file_size = bin_bytes.len() as i64;
-    let new_md5 = compute_md5(&bin_bytes);
-
-    upload_object(&emu.binary_path, &bin_bytes)
-        .await
-        .map_err(|e| {
-            error!("Failed to upload binary: {:?}", e);
-            V1ApiError::DatabaseError
-        })?;
+    if new_binary_path != emu.binary_path {
+        let _ = crate::utils::s3::delete_object(&emu.binary_path).await;
+    }
 
     sqlx::query!(
-        "UPDATE emulators SET md5_hash = $1, file_size = $2 WHERE id = $3",
-        new_md5,
-        file_size,
+        "UPDATE emulators SET md5_hash = $1, file_size = $2, binary_path = $3 WHERE id = $4",
+        data.md5_hash,
+        data.file_size_bytes,
+        new_binary_path,
         id
     )
     .execute(&*SQL)

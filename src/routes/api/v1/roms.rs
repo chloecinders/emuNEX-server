@@ -22,7 +22,7 @@ use crate::{
         api_response::V1ApiResponseTrait,
         v1::guards::{AuthenticatedUser, UserRole},
     },
-    utils::s3::{compute_md5, delete_object, upload_object},
+    utils::s3::{compute_md5, delete_object, presign_put_url, upload_object},
 };
 
 #[derive(serde::Serialize, sqlx::FromRow)]
@@ -418,13 +418,84 @@ pub struct V1RomUpload<'r> {
     region: Option<String>,
     release_year: Option<i32>,
     serial: Option<String>,
-    md5_hash: Option<String>,
+    md5_hash: String,
+    file_extension: String,
+    file_size_bytes: i64,
     languages: Option<String>,
-    rom_file: TempFile<'r>,
     image_file: TempFile<'r>,
     zipped: Option<bool>,
     zipped_entry: Option<String>,
     multi_disc_disclaimer: Option<bool>,
+}
+
+#[derive(serde::Deserialize)]
+pub struct V1RomSignRequest {
+    pub console: String,
+    pub md5_hash: String,
+    pub file_extension: String,
+}
+
+#[derive(serde::Serialize)]
+pub struct V1RomSignResponse {
+    pub upload_url: String,
+    pub rom_path: String,
+}
+impl V1ApiResponseTrait for V1RomSignResponse {}
+
+#[post("/api/v1/roms/sign", format = "json", data = "<data>")]
+pub async fn sign_rom_upload(
+    data: Json<V1RomSignRequest>,
+    user: AuthenticatedUser,
+) -> V1ApiResponseType<V1RomSignResponse> {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
+        return Err(V1ApiError::MissingPermissions);
+    }
+    let rom_path = format!(
+        "/roms/{}/{}.{}",
+        data.console, data.md5_hash, data.file_extension
+    );
+    let upload_url = presign_put_url(&rom_path, 900).await.map_err(|e| {
+        error!("Failed to presign ROM upload URL: {}", e);
+        V1ApiError::InternalError
+    })?;
+    Ok(V1ApiResponse(V1RomSignResponse {
+        upload_url,
+        rom_path,
+    }))
+}
+
+#[derive(serde::Deserialize)]
+pub struct V1RomFileSignRequest {
+    pub md5_hash: String,
+    pub file_extension: String,
+}
+
+#[post("/api/v1/roms/<id>/file/sign", format = "json", data = "<data>")]
+pub async fn sign_rom_file_update(
+    id: String,
+    data: Json<V1RomFileSignRequest>,
+    user: AuthenticatedUser,
+) -> V1ApiResponseType<V1RomSignResponse> {
+    if user.role != UserRole::Admin && user.role != UserRole::Moderator {
+        return Err(V1ApiError::MissingPermissions);
+    }
+    let rom = sqlx::query!("SELECT console FROM roms WHERE id = $1", id)
+        .fetch_optional(&*SQL)
+        .await
+        .map_err(|_| V1ApiError::InternalError)?
+        .ok_or(V1ApiError::RomNotFound)?;
+    let rom_path = format!(
+        "/roms/{}/{}.{}",
+        rom.console, data.md5_hash, data.file_extension
+    );
+    let upload_url = presign_put_url(&rom_path, 900).await.map_err(|e| {
+        error!("Failed to presign ROM update URL: {}", e);
+        V1ApiError::InternalError
+    })?;
+    Ok(V1ApiResponse(V1RomSignResponse {
+        upload_url,
+        rom_path,
+    }))
 }
 
 #[post("/api/v1/roms/upload", format = "multipart/form-data", data = "<data>")]
@@ -438,49 +509,10 @@ pub async fn upload_rom(
 
     let rom_id = crate::utils::snowflake::next_id();
 
-    let rom_filename = data
-        .rom_file
-        .raw_name()
-        .map(|n| n.dangerous_unsafe_unsanitized_raw().to_string())
-        .unwrap_or_else(|| "file.bin".to_string());
-
-    let clean_rom_filename = rom_filename
-        .replace('\\', "/")
-        .split('/')
-        .last()
-        .unwrap_or("file.bin")
-        .to_string();
-
-    let rom_ext = Path::new(&clean_rom_filename)
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .unwrap_or("bin");
-
-    let rom_bytes = tokio::fs::read(data.rom_file.path().unwrap())
-        .await
-        .map_err(|e| {
-            error!("Failed to read rom file from temp storage: {:?}", e);
-            V1ApiError::InternalError
-        })?;
-
-    let rom_md5 = compute_md5(&rom_bytes);
-
-    if let Some(provided_md5) = data.md5_hash.as_deref().filter(|s| !s.is_empty()) {
-        if provided_md5.to_lowercase() != rom_md5.to_lowercase() {
-            error!(
-                "MD5 mismatch for ROM upload: expected {}, got {}",
-                provided_md5, rom_md5
-            );
-            return Err(V1ApiError::BadRequest);
-        }
-    }
-
-    let rom_path = format!("/roms/{}/{}.{}", data.console, rom_md5, rom_ext);
-
-    upload_object(&rom_path, &rom_bytes).await.map_err(|e| {
-        error!("Failed to upload rom to '{}': {:?}", rom_path, e);
-        V1ApiError::InternalError
-    })?;
+    let rom_path = format!(
+        "/roms/{}/{}.{}",
+        data.console, data.md5_hash, data.file_extension
+    );
 
     let img_bytes = tokio::fs::read(data.image_file.path().unwrap())
         .await
@@ -540,9 +572,9 @@ pub async fn upload_rom(
         data.release_year,
         rom_path,
         img_hash,
-        rom_ext,
-        rom_md5,
-        rom_bytes.len() as i64,
+        data.file_extension.clone(),
+        data.md5_hash.clone(),
+        data.file_size_bytes,
         data.languages,
         data.zipped.unwrap_or(false),
         data.zipped_entry,
@@ -626,8 +658,10 @@ pub async fn update_rom(
 }
 
 #[derive(FromForm)]
-pub struct V1FileUpdate<'r> {
-    file: TempFile<'r>,
+pub struct V1FileUpdate {
+    md5_hash: String,
+    file_extension: String,
+    file_size_bytes: i64,
 }
 
 #[post(
@@ -637,7 +671,7 @@ pub struct V1FileUpdate<'r> {
 )]
 pub async fn update_rom_file(
     id: String,
-    data: Form<V1FileUpdate<'_>>,
+    data: Form<V1FileUpdate>,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<()> {
     if user.role != UserRole::Admin && user.role != UserRole::Moderator {
@@ -653,28 +687,10 @@ pub async fn update_rom_file(
         })?
         .ok_or(V1ApiError::RomNotFound)?;
 
-    let rom_bytes = tokio::fs::read(data.file.path().unwrap())
-        .await
-        .map_err(|e| {
-            error!("{:?}", e);
-            V1ApiError::InternalError
-        })?;
-
-    let new_md5 = compute_md5(&rom_bytes);
-
-    let ext = std::path::Path::new(&rom.rom_path)
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("bin");
-
-    let new_rom_path = format!("/roms/{}/{}.{}", rom.console, new_md5, ext);
-
-    upload_object(&new_rom_path, &rom_bytes)
-        .await
-        .map_err(|e| {
-            error!("Failed to upload rom: {:?}", e);
-            V1ApiError::InternalError
-        })?;
+    let new_rom_path = format!(
+        "/roms/{}/{}.{}",
+        rom.console, data.md5_hash, data.file_extension
+    );
 
     if new_rom_path != rom.rom_path {
         let _ = crate::utils::s3::delete_object(&rom.rom_path).await;
@@ -683,8 +699,8 @@ pub async fn update_rom_file(
     sqlx::query!(
         "UPDATE roms SET rom_path = $1, md5_hash = $2, file_size_bytes = $3 WHERE id = $4",
         new_rom_path,
-        new_md5,
-        rom_bytes.len() as i64,
+        data.md5_hash.clone(),
+        data.file_size_bytes,
         id
     )
     .execute(&*SQL)

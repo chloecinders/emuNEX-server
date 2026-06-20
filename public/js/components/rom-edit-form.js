@@ -1,5 +1,6 @@
 import { LitElement, css, html } from "lit";
 import { baseTokens, buttonStyles, formStyles, statusStyles, uploadZoneStyles } from "./shared-styles.js";
+import "../libs/spark-md5.min.js";
 
 export class EmunexRomEditForm extends LitElement {
     static properties = {
@@ -131,8 +132,58 @@ export class EmunexRomEditForm extends LitElement {
 
             const romInput = root.querySelector("#edit-rom");
             if (romInput.files.length) {
+                const romFile = romInput.files[0];
+                this.showStatus("Computing MD5 for new ROM...", "success");
+                
+                const md5 = await new Promise((resolve, reject) => {
+                    const chunkSize = 2097152;
+                    const chunks = Math.ceil(romFile.size / chunkSize);
+                    let currentChunk = 0;
+                    const spark = new window.SparkMD5.ArrayBuffer();
+                    const fileReader = new FileReader();
+                    fileReader.onload = (e) => {
+                        spark.append(e.target.result);
+                        currentChunk++;
+                        if (currentChunk < chunks) loadNext();
+                        else resolve(spark.end());
+                    };
+                    fileReader.onerror = () => reject("File reading failed");
+                    const loadNext = () => {
+                        const start = currentChunk * chunkSize;
+                        const end = start + chunkSize >= romFile.size ? romFile.size : start + chunkSize;
+                        fileReader.readAsArrayBuffer(romFile.slice(start, end));
+                    };
+                    loadNext();
+                });
+
+                let fileExt = romFile.name.split('.').pop().toLowerCase() || "bin";
+                if (this._zipped) fileExt = "zip";
+
+                this.showStatus("Requesting secure upload URL...", "success");
+                const signRes = await fetch(`/api/v1/roms/${encodeURIComponent(id)}/file/sign`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: token },
+                    body: JSON.stringify({
+                        md5_hash: md5,
+                        file_extension: fileExt
+                    })
+                });
+                const signJson = await signRes.json();
+                if (!signRes.ok) throw new Error(signJson.error || "Failed to sign upload URL");
+
+                this.showStatus("Uploading ROM directly to S3...", "success");
+                const putRes = await fetch(signJson.data.upload_url, {
+                    method: "PUT",
+                    body: romFile,
+                    headers: { "Content-Type": "application/octet-stream" }
+                });
+                if (!putRes.ok) throw new Error("S3 upload failed");
+
+                this.showStatus("Finalizing file update with server...", "success");
                 const d = new FormData();
-                d.append("rom", romInput.files[0]);
+                d.append("md5_hash", md5);
+                d.append("file_extension", fileExt);
+                d.append("file_size_bytes", romFile.size.toString());
                 const r2 = await fetch(`/api/v1/roms/${encodeURIComponent(id)}/file`, {
                     method: "POST",
                     headers: { Authorization: token },

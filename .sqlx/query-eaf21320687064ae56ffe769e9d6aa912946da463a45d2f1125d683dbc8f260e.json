@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT platform, consoles, name FROM emulators WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "platform",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "consoles",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "eaf21320687064ae56ffe769e9d6aa912946da463a45d2f1125d683dbc8f260e"
+}
