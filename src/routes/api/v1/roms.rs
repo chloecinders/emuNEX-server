@@ -1184,7 +1184,10 @@ pub async fn migrate_user_roms(
     data: Json<V1MigrateRequest>,
     user: AuthenticatedUser,
 ) -> V1ApiResponseType<()> {
-    let mut tx = SQL.begin().await.map_err(|_| V1ApiError::InternalError)?;
+    let mut tx = SQL.begin().await.map_err(|e| {
+        error!("Failed to begin transaction: {:?}", e);
+        V1ApiError::InternalError
+    })?;
 
     let is_migrated = sqlx::query!(
         "SELECT has_migrated FROM users WHERE id = $1",
@@ -1192,7 +1195,10 @@ pub async fn migrate_user_roms(
     )
     .fetch_one(&mut *tx)
     .await
-    .map_err(|_| V1ApiError::InternalError)?
+    .map_err(|e| {
+        error!("Failed to fetch user has_migrated status: {:?}", e);
+        V1ApiError::InternalError
+    })?
     .has_migrated;
 
     if is_migrated {
@@ -1202,9 +1208,18 @@ pub async fn migrate_user_roms(
     let mut ids = data.ids.clone();
     ids.truncate(50);
 
-    for id in ids {
+    let valid_ids: Vec<String> =
+        sqlx::query_scalar!("SELECT id FROM roms WHERE id = ANY($1)", &ids)
+            .fetch_all(&mut *tx)
+            .await
+            .map_err(|e| {
+                error!("Failed to validate rom ids: {:?}", e);
+                V1ApiError::InternalError
+            })?;
+
+    for id in valid_ids {
         let user_rom_id = crate::utils::snowflake::next_id();
-        let _ = sqlx::query!(
+        let res = sqlx::query!(
             "INSERT INTO user_roms (id, user_id, rom_id, play_count, last_played, is_favorite)
              VALUES ($1, $2, $3, 0, NULL, FALSE)
              ON CONFLICT (user_id, rom_id) DO NOTHING",
@@ -1214,6 +1229,10 @@ pub async fn migrate_user_roms(
         )
         .execute(&mut *tx)
         .await;
+
+        if let Err(e) = res {
+            error!("Failed to insert user_rom {}: {:?}", id, e);
+        }
     }
 
     sqlx::query!(
@@ -1222,9 +1241,15 @@ pub async fn migrate_user_roms(
     )
     .execute(&mut *tx)
     .await
-    .map_err(|_| V1ApiError::InternalError)?;
+    .map_err(|e| {
+        error!("Failed to update user has_migrated: {:?}", e);
+        V1ApiError::InternalError
+    })?;
 
-    tx.commit().await.map_err(|_| V1ApiError::InternalError)?;
+    tx.commit().await.map_err(|e| {
+        error!("Failed to commit transaction: {:?}", e);
+        V1ApiError::InternalError
+    })?;
 
     Ok(V1ApiResponse(()))
 }
